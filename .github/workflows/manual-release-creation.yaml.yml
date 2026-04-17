@@ -1,0 +1,176 @@
+name: Manual Release Creation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+        type: string
+      tenant:
+        description: "Select Tenant"
+        required: true
+        type: choice
+        options:
+          - inter
+          - ingka
+      environment:
+        description: "Select Environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      release_type:
+        description: "Release Type"
+        required: true
+        type: choice
+        options:
+          - prerelease
+          - release
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  validate:
+    name: "Validate Inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs
+        run: |
+          TENANT="${{ inputs.tenant }}"
+          ENV="${{ inputs.environment }}"
+          VERSION="${{ inputs.version }}"
+          RELEASE_TYPE="${{ inputs.release_type }}"
+          
+          echo "📋 Validation Starting..."
+          
+          # Check all inputs are provided
+          if [[ -z "$VERSION" ]]; then
+            echo "❌ Error: 'version' is required"
+            exit 1
+          fi
+          
+          if [[ -z "$TENANT" ]]; then
+            echo "❌ Error: 'tenant' is required"
+            exit 1
+          fi
+          
+          if [[ -z "$ENV" ]]; then
+            echo "❌ Error: 'environment' is required"
+            exit 1
+          fi
+          
+          # Business rules
+          if [[ "$TENANT" == "inter" && "$ENV" == "dev" ]]; then
+            echo "❌ Error: 'inter' tenant cannot be deployed to 'dev' environment"
+            exit 1
+          fi
+          
+          if [[ "$RELEASE_TYPE" == "release" && "$ENV" != "prod" ]]; then
+            echo "⚠️  Warning: Creating full release for non-prod environment"
+          fi
+          
+          echo "✅ All validations passed!"
+          echo ""
+          echo "📦 Release Details:"
+          echo "  - Version: $VERSION"
+          echo "  - Tenant: $TENANT"
+          echo "  - Environment: $ENV"
+          echo "  - Type: $RELEASE_TYPE"
+
+  create-release:
+    name: "Create ${{ inputs.release_type }}: ${{ inputs.version }}"
+    runs-on: ubuntu-latest
+    needs: [validate]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git rev-parse "${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag ${{ inputs.version }} already exists"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag ${{ inputs.version }} is available"
+          fi
+      
+      - name: Create Tag (if needed)
+        if: steps.check-tag.outputs.tag_exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git tag -a "${{ inputs.version }}" -m "Release ${{ inputs.version }} for ${{ inputs.tenant }}-${{ inputs.environment }}"
+          git push origin "${{ inputs.version }}"
+          
+          echo "✅ Created tag: ${{ inputs.version }}"
+      
+      - name: Generate Release Notes
+        id: release-notes
+        run: |
+          NOTES=$(cat <<EOF
+          ## 🚀 Deployment Information
+          
+          This ${{ inputs.release_type }} is for **${{ inputs.tenant }}-${{ inputs.environment }}** environment.
+          
+          ### 📋 Details
+          - **🏢 Tenant:** \`${{ inputs.tenant }}\`
+          - **🌍 Environment:** \`${{ inputs.environment }}\`
+          - **📦 Version:** \`${{ inputs.version }}\`
+          - **🔖 Type:** \`${{ inputs.release_type }}\`
+          - **📅 Created:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          - **👤 Triggered by:** @${{ github.actor }}
+          
+          ### 🔗 Links
+          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - [Commit](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          
+          ---
+          
+          _Automated release created via GitHub Actions_
+          EOF
+          )
+          
+          echo "$NOTES" > release_notes.md
+          
+          echo "### 📝 Release Notes Preview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "$NOTES" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: "${{ inputs.version }} - ${{ inputs.tenant }}-${{ inputs.environment }}"
+          body_path: release_notes.md
+          prerelease: ${{ inputs.release_type == 'prerelease' }}
+          draft: false
+          make_latest: ${{ inputs.release_type == 'release' && inputs.environment == 'prod' }}
+      
+      - name: Create Deployment Record
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: ${{ inputs.tenant }}-${{ inputs.environment }}
+          ref: ${{ inputs.version }}
+          initial-status: success
+          description: "Released ${{ inputs.version }} to ${{ inputs.tenant }}-${{ inputs.environment }}"
+      
+      - name: Summary
+        run: |
+          echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** \`${{ inputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** \`${{ inputs.tenant }}-${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.version }})" >> $GITHUB_STEP_SUMMARY
