@@ -38,7 +38,24 @@ jobs:
   validate:
     name: "Validate Inputs"
     runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.calculate-version.outputs.full_version }}
     steps:
+      - name: Calculate Full Version with Tenant
+        id: calculate-version
+        run: |
+          VERSION="${{ inputs.version }}"
+          TENANT="${{ inputs.tenant }}"
+          
+          # Remove 'v' prefix if present
+          VERSION=${VERSION#v}
+          
+          # Create tenant-prefixed version
+          FULL_VERSION="${TENANT}-v${VERSION}"
+          
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Full version tag: $FULL_VERSION"
+      
       - name: Validate inputs
         run: |
           TENANT="${{ inputs.tenant }}"
@@ -83,7 +100,7 @@ jobs:
           echo "  - Type: $RELEASE_TYPE"
 
   create-release:
-    name: "Create ${{ inputs.release_type }}: ${{ inputs.version }}"
+    name: "Create ${{ inputs.release_type }}: ${{ needs.validate.outputs.full_version }}"
     runs-on: ubuntu-latest
     needs: [validate]
     steps:
@@ -95,28 +112,33 @@ jobs:
       - name: Check if tag exists
         id: check-tag
         run: |
-          if git rev-parse "${{ inputs.version }}" >/dev/null 2>&1; then
+          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
+          if git rev-parse "$FULL_VERSION" >/dev/null 2>&1; then
             echo "tag_exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Tag ${{ inputs.version }} already exists"
+            echo "⚠️  Tag $FULL_VERSION already exists"
           else
             echo "tag_exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag ${{ inputs.version }} is available"
+            echo "✅ Tag $FULL_VERSION is available"
           fi
       
       - name: Create Tag (if needed)
         if: steps.check-tag.outputs.tag_exists == 'false'
         run: |
+          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          git tag -a "${{ inputs.version }}" -m "Release ${{ inputs.version }} for ${{ inputs.tenant }}-${{ inputs.environment }}"
-          git push origin "${{ inputs.version }}"
+          git tag -a "$FULL_VERSION" -m "Release $FULL_VERSION for ${{ inputs.tenant }}-${{ inputs.environment }}"
+          git push origin "$FULL_VERSION"
           
-          echo "✅ Created tag: ${{ inputs.version }}"
+          echo "✅ Created tag: $FULL_VERSION"
       
       - name: Generate Release Notes
         id: release-notes
         run: |
+          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
+          
           NOTES=$(cat <<EOF
           ## 🚀 Deployment Information
           
@@ -126,7 +148,8 @@ jobs:
           - **🏢 Tenant:** \`${{ inputs.tenant }}\`
           - **🌍 Environment:** \`${{ inputs.environment }}\`
           - **📦 Version:** \`${{ inputs.version }}\`
-          - **🔖 Type:** \`${{ inputs.release_type }}\`
+          - **🔖 Full Tag:** \`$FULL_VERSION\`
+          - **📑 Type:** \`${{ inputs.release_type }}\`
           - **📅 Created:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           - **👤 Triggered by:** @${{ github.actor }}
           
@@ -149,28 +172,31 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: "${{ inputs.version }} - ${{ inputs.tenant }}-${{ inputs.environment }}"
+          tag_name: ${{ needs.validate.outputs.full_version }}
+          name: "[${{ inputs.tenant }}] ${{ inputs.version }} - ${{ inputs.environment }}"
           body_path: release_notes.md
           prerelease: ${{ inputs.release_type == 'prerelease' }}
           draft: false
-          make_latest: ${{ inputs.release_type == 'release' && inputs.environment == 'prod' }}
+          make_latest: false
       
       - name: Create Deployment Record
         uses: chrnorm/deployment-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment: ${{ inputs.tenant }}-${{ inputs.environment }}
-          ref: ${{ inputs.version }}
+          ref: ${{ needs.validate.outputs.full_version }}
           initial-status: success
-          description: "Released ${{ inputs.version }} to ${{ inputs.tenant }}-${{ inputs.environment }}"
+          description: "Released ${{ needs.validate.outputs.full_version }} to ${{ inputs.tenant }}-${{ inputs.environment }}"
       
       - name: Summary
         run: |
+          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
+          
           echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Full Tag:** \`$FULL_VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "**Type:** \`${{ inputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ inputs.tenant }}-${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/$FULL_VERSION)" >> $GITHUB_STEP_SUMMARY
