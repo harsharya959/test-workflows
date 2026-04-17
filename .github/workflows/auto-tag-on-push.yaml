@@ -24,6 +24,10 @@ jobs:
         run: |
           # Get the latest tag, or use v0.0.0 if no tags exist
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          
+          # Strip any existing commit SHA suffix (e.g., v1.0.0-abc123 -> v1.0.0)
+          LATEST_TAG=$(echo "$LATEST_TAG" | sed 's/-[a-f0-9]\{7,\}$//')
+          
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "📌 Latest tag: $LATEST_TAG"
       
@@ -31,10 +35,9 @@ jobs:
         id: next-version
         run: |
           LATEST_TAG="${{ steps.get-tag.outputs.latest_tag }}"
-          SHORT_SHA=$(git rev-parse --short HEAD)
           
-          # Extract version numbers (remove 'v' prefix)
-          VERSION=${LATEST_TAG#v}
+          # Extract version numbers (remove 'v' prefix and any suffix)
+          VERSION=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/-.*//')
           
           # Split into major.minor.patch
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
@@ -42,8 +45,8 @@ jobs:
           # Increment patch version
           PATCH=$((PATCH + 1))
           
-          # Create new tag
-          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}-${SHORT_SHA}"
+          # Create new clean tag (without SHA)
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
           
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "📦 New tag: $NEW_TAG"
