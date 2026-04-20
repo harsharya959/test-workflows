@@ -49,20 +49,22 @@ jobs:
           PATCH=0
           
           if [ "$HAS_TAGS" == "true" ]; then
-            # Check if tag has tenant prefix (e.g., inter-v1.0.0 or ingka-v1.0.0)
-            if [[ "$LATEST_TAG" =~ ^(inter|ingka)-v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # Match pattern: [optional-prefix-]v1.2.3
+            # First, try to match with any prefix (anything before -v)
+            if [[ "$LATEST_TAG" =~ ^([a-zA-Z0-9_-]+)-v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               TENANT_PREFIX="${BASH_REMATCH[1]}-"
               MAJOR="${BASH_REMATCH[2]}"
               MINOR="${BASH_REMATCH[3]}"
               PATCH="${BASH_REMATCH[4]}"
-              echo "📋 Detected tenant-prefixed tag: $TENANT_PREFIX"
+              echo "📋 Detected prefixed tag: prefix='${BASH_REMATCH[1]}', version=${MAJOR}.${MINOR}.${PATCH}"
             # Standard semver tag (e.g., v1.0.0)
-            elif [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            elif [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               MAJOR="${BASH_REMATCH[1]}"
               MINOR="${BASH_REMATCH[2]}"
               PATCH="${BASH_REMATCH[3]}"
+              echo "📋 Detected standard semver tag: v${MAJOR}.${MINOR}.${PATCH}"
             else
-              echo "⚠️ Warning: Tag format not recognized, starting from v0.0.1"
+              echo "⚠️ Warning: Tag format '$LATEST_TAG' not recognized, starting from v0.0.1"
             fi
           fi
           
@@ -75,9 +77,8 @@ jobs:
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "tenant_prefix=$TENANT_PREFIX" >> $GITHUB_OUTPUT
           echo "📦 New tag will be: $NEW_TAG"
-          echo "   Major: $MAJOR"
-          echo "   Minor: $MINOR"
-          echo "   Patch: $PATCH"
+          echo "   From: $LATEST_TAG"
+          echo "   Version: ${MAJOR}.${MINOR}.${PATCH}"
       
       - name: Check if Tag Already Exists
         id: check-tag
