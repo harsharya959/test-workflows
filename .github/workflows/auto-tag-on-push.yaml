@@ -22,36 +22,78 @@ jobs:
       - name: Get Latest Tag
         id: get-tag
         run: |
-          # Get the latest tag, or use v0.0.0 if no tags exist
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Get the latest tag, or use a default if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
-          # Strip any existing commit SHA suffix (e.g., v1.0.0-abc123 -> v1.0.0)
-          LATEST_TAG=$(echo "$LATEST_TAG" | sed 's/-[a-f0-9]\{7,\}$//')
-          
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "📌 Latest tag: $LATEST_TAG"
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags exist - set default
+            echo "latest_tag=" >> $GITHUB_OUTPUT
+            echo "has_tags=false" >> $GITHUB_OUTPUT
+            echo "📌 No existing tags found"
+          else
+            echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "has_tags=true" >> $GITHUB_OUTPUT
+            echo "📌 Latest tag: $LATEST_TAG"
+          fi
       
       - name: Calculate Next Version
         id: next-version
         run: |
           LATEST_TAG="${{ steps.get-tag.outputs.latest_tag }}"
+          HAS_TAGS="${{ steps.get-tag.outputs.has_tags }}"
           
-          # Extract version numbers (remove 'v' prefix and any suffix)
-          VERSION=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/-.*//')
+          # Default values
+          TENANT_PREFIX=""
+          MAJOR=0
+          MINOR=0
+          PATCH=0
           
-          # Split into major.minor.patch
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          if [ "$HAS_TAGS" == "true" ]; then
+            # Check if tag has tenant prefix (e.g., inter-v1.0.0 or ingka-v1.0.0)
+            if [[ "$LATEST_TAG" =~ ^(inter|ingka)-v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+              TENANT_PREFIX="${BASH_REMATCH[1]}-"
+              MAJOR="${BASH_REMATCH[2]}"
+              MINOR="${BASH_REMATCH[3]}"
+              PATCH="${BASH_REMATCH[4]}"
+              echo "📋 Detected tenant-prefixed tag: $TENANT_PREFIX"
+            # Standard semver tag (e.g., v1.0.0)
+            elif [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              PATCH="${BASH_REMATCH[3]}"
+            else
+              echo "⚠️ Warning: Tag format not recognized, starting from v0.0.1"
+            fi
+          fi
           
           # Increment patch version
           PATCH=$((PATCH + 1))
           
-          # Create new clean tag (without SHA)
-          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          # Create new tag with or without tenant prefix
+          NEW_TAG="${TENANT_PREFIX}v${MAJOR}.${MINOR}.${PATCH}"
           
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
-          echo "📦 New tag: $NEW_TAG"
+          echo "tenant_prefix=$TENANT_PREFIX" >> $GITHUB_OUTPUT
+          echo "📦 New tag will be: $NEW_TAG"
+          echo "   Major: $MAJOR"
+          echo "   Minor: $MINOR"
+          echo "   Patch: $PATCH"
+      
+      - name: Check if Tag Already Exists
+        id: check-tag
+        run: |
+          NEW_TAG="${{ steps.next-version.outputs.new_tag }}"
+          
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag $NEW_TAG already exists, skipping creation"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $NEW_TAG is available"
+          fi
       
       - name: Create and Push Tag
+        if: steps.check-tag.outputs.tag_exists == 'false'
         run: |
           NEW_TAG="${{ steps.next-version.outputs.new_tag }}"
           
@@ -65,8 +107,20 @@ jobs:
       
       - name: Summary
         run: |
-          echo "### 🏷️ Tag Created" >> $GITHUB_STEP_SUMMARY
+          NEW_TAG="${{ steps.next-version.outputs.new_tag }}"
+          TAG_EXISTS="${{ steps.check-tag.outputs.tag_exists }}"
+          
+          echo "### 🏷️ Auto Tag Result" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag:** \`${{ steps.next-version.outputs.new_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$TAG_EXISTS" == "true" ]; then
+            echo "⚠️ **Status:** Tag already exists, skipped creation" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Status:** Tag created successfully" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
