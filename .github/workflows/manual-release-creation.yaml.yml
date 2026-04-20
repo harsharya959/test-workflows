@@ -134,6 +134,46 @@ jobs:
           
           echo "✅ Created tag: $FULL_VERSION"
       
+      # ========== CHANGELOG UPDATE STEP ==========
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Update CHANGELOG
+        id: update-changelog
+        run: |
+          # Install conventional-changelog
+          npm install -g conventional-changelog-cli
+          
+          # Create CHANGELOG.md if it doesn't exist
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "All notable changes to this project will be documented in this file." >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+          
+          # Generate changelog
+          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Commit if there are changes
+          if git diff --quiet CHANGELOG.md; then
+            echo "changelog_updated=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No changes to CHANGELOG.md"
+          else
+            git add CHANGELOG.md
+            git commit -m "docs: update CHANGELOG for ${{ needs.validate.outputs.full_version }}"
+            git push origin HEAD:${{ github.event.repository.default_branch }}
+            echo "changelog_updated=true" >> $GITHUB_OUTPUT
+            echo "✅ CHANGELOG.md updated and committed"
+          fi
+      # ========== END CHANGELOG UPDATE ==========
+      
       - name: Generate Release Notes
         id: release-notes
         run: |
@@ -156,6 +196,7 @@ jobs:
           ### 🔗 Links
           - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - [Commit](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - [CHANGELOG](CHANGELOG.md)
           
           ---
           
@@ -198,5 +239,6 @@ jobs:
           echo "**Full Tag:** \`$FULL_VERSION\`" >> $GITHUB_STEP_SUMMARY
           echo "**Type:** \`${{ inputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ inputs.tenant }}-${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**CHANGELOG:** ${{ steps.update-changelog.outputs.changelog_updated == 'true' && '✅ Updated' || 'ℹ️ No changes' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/$FULL_VERSION)" >> $GITHUB_STEP_SUMMARY
