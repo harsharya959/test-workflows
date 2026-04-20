@@ -22,18 +22,19 @@ jobs:
       - name: Get Latest Tag
         id: get-tag
         run: |
-          # Get the latest tag, or use a default if no tags exist
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # Get all tags and filter for valid format
+          # Valid formats: v1.2.3 OR prefix-v1.2.3 (where prefix has no hyphens)
+          LATEST_TAG=$(git tag -l | grep -E '^([a-z]+)-v[0-9]+\.[0-9]+\.[0-9]+$|^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
           
           if [ -z "$LATEST_TAG" ]; then
-            # No tags exist - set default
+            # No valid tags exist - set default
             echo "latest_tag=" >> $GITHUB_OUTPUT
             echo "has_tags=false" >> $GITHUB_OUTPUT
             echo "📌 No existing tags found"
           else
             echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
             echo "has_tags=true" >> $GITHUB_OUTPUT
-            echo "📌 Latest tag: $LATEST_TAG"
+            echo "📌 Latest valid tag: $LATEST_TAG"
           fi
       
       - name: Calculate Next Version
@@ -49,9 +50,8 @@ jobs:
           PATCH=0
           
           if [ "$HAS_TAGS" == "true" ]; then
-            # Match pattern: [optional-prefix-]v1.2.3
-            # First, try to match with any prefix (anything before -v)
-            if [[ "$LATEST_TAG" =~ ^([a-zA-Z0-9_-]+)-v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            # Match pattern: prefix-v1.2.3 (where prefix is a single word, no hyphens)
+            if [[ "$LATEST_TAG" =~ ^([a-z]+)-v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               TENANT_PREFIX="${BASH_REMATCH[1]}-"
               MAJOR="${BASH_REMATCH[2]}"
               MINOR="${BASH_REMATCH[3]}"
@@ -64,7 +64,8 @@ jobs:
               PATCH="${BASH_REMATCH[3]}"
               echo "📋 Detected standard semver tag: v${MAJOR}.${MINOR}.${PATCH}"
             else
-              echo "⚠️ Warning: Tag format '$LATEST_TAG' not recognized, starting from v0.0.1"
+              echo "❌ Error: Tag format '$LATEST_TAG' not recognized"
+              exit 1
             fi
           fi
           
