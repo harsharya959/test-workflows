@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.27] - 2026-04-21 (Pre-Release)
+
+> Compare: **v0.0.26** → **v0.0.27**
+
+### Commits
+
+- Update entry-changelog.yml release prepreasle
+- docs: update CHANGELOG-ENTRY.md for v0.0.26 [skip ci]
+- docs: update CHANGELOG.md for v0.0.26 [skip ci]
+
+---
+
 ## [0.0.26] - 2026-04-21 (Pre-Release)
 
 ### Commits
