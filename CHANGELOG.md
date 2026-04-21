@@ -3,6 +3,28 @@
 All releases are automatically tracked here.
 ---
 
+## Pre-Release: [v0.0.27](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.27) | 2026-04-21
+
+> **Release Name:** UI-0.0.27-prerelease
+> **Compare:** [v0.0.26 to v0.0.27](https://github.com/harsharya959/test-workflows/compare/v0.0.26...v0.0.27)
+
+### Tenant Deployment Status
+
+| Tenant | Deployed Tag |
+|--------|--------------|
+| `ingka` | `v0.0.27` |
+| `inter` | `v0.0.27` |
+
+### Commits
+
+| SHA | Message | Author |
+|-----|---------|--------|
+| [1a6cf40](https://github.com/harsharya959/test-workflows/commit/1a6cf4090f001f86e440e9d242b163af8db8026c) | Update entry-changelog.yml release prepreasle | @harsharya959 |
+| [8abef03](https://github.com/harsharya959/test-workflows/commit/8abef03c65471ef9e848a0d441c28a689bc4f0e1) | docs: update CHANGELOG-ENTRY.md for v0.0.26 [skip ci] | @github-actions[bot] |
+| [57acb22](https://github.com/harsharya959/test-workflows/commit/57acb22610f58608b2b569f8bf35e3664e4dc6b6) | docs: update CHANGELOG.md for v0.0.26 [skip ci] | @github-actions[bot] |
+
+
+
 ## Pre-Release: [v0.0.26](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.26) | 2026-04-21
 
 > **Release Name:** RELEASE-UI-0.0.26-prerelease
