@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.19] - 2026-04-21 (Pre-Release)
+
+### Commits
+
+- Update entry-changelog.yml dsfjndsifndsi
+- docs: update CHANGELOG.md for v0.0.18 [skip ci]
+- docs: update CHANGELOG-ENTRY.md for v0.0.18 [skip ci]
+
+---
+
 ## [0.0.18] - 2026-04-21 (Release)
 
 ### Commits
@@ -8,4 +18,3 @@
 - docs: update CHANGELOG.md for v0.0.17 [skip ci]
 
 ---
-
