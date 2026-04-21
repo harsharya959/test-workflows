@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.26] - 2026-04-21 (Pre-Release)
+
+### Commits
+
+- Update README.md update 3
+
+---
+
 ## [0.0.23] - 2026-04-21 (Release)
 
 ### Commits
