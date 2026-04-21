@@ -1,0 +1,106 @@
+name: Generate Changelog Entry on Release
+
+on:
+  release:
+    types: [published, prereleased]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  changelog:
+    name: "Append Changelog Entry"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Changelog Entry
+        run: |
+          CURRENT_TAG="${{ github.event.release.tag_name }}"
+          IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+          VERSION="${CURRENT_TAG#v}"
+          OUT="/tmp/new_entry.md"
+
+          RELEASE_TYPE="Release"
+          if [ "$IS_PRERELEASE" == "true" ]; then
+            RELEASE_TYPE="Pre-Release"
+          fi
+
+          # Find previous tag
+          ALL_TAGS=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V)
+          PREV_TAG=""
+          for TAG in $ALL_TAGS; do
+            [ "$TAG" == "$CURRENT_TAG" ] && break
+            PREV_TAG="$TAG"
+          done
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          # Write entry
+          printf '## [%s] - %s (%s)\n\n' "$VERSION" "$RELEASE_DATE" "$RELEASE_TYPE" > "$OUT"
+
+          printf '### Commits\n\n' >> "$OUT"
+
+          git log "${PREV_TAG}..${CURRENT_TAG}" \
+            --pretty=format:"- %s" \
+            --no-merges >> "$OUT"
+
+          printf '\n\n%s\n\n' '---' >> "$OUT"
+
+          echo "Entry:"
+          cat "$OUT"
+
+      - name: Update CHANGELOG-ENTRY.md
+        run: |
+          CHANGELOG="CHANGELOG-ENTRY.md"
+
+          if [ ! -f "$CHANGELOG" ]; then
+            printf '# Changelog\n\n' > "$CHANGELOG"
+            cat /tmp/new_entry.md >> "$CHANGELOG"
+          else
+            HEADER=$(head -2 "$CHANGELOG")
+            BODY=$(tail -n +3 "$CHANGELOG")
+            printf '%s\n\n' "$HEADER" > /tmp/merged.md
+            cat /tmp/new_entry.md       >> /tmp/merged.md
+            printf '%s\n' "$BODY"      >> /tmp/merged.md
+            mv /tmp/merged.md "$CHANGELOG"
+          fi
+
+      - name: Commit and Push
+        run: |
+          CURRENT_TAG="${{ github.event.release.tag_name }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+          git fetch origin "$DEFAULT_BRANCH"
+
+          cp CHANGELOG-ENTRY.md /tmp/changelog_final.md
+
+          git checkout -- . 2>/dev/null || true
+          git clean -fd    2>/dev/null || true
+
+          git checkout "$DEFAULT_BRANCH"
+          git pull origin "$DEFAULT_BRANCH" --ff-only
+
+          cp /tmp/changelog_final.md CHANGELOG-ENTRY.md
+
+          git add CHANGELOG-ENTRY.md
+
+          if git diff --cached --quiet; then
+            echo "No changes, skipping"
+          else
+            git commit -m "docs: update CHANGELOG-ENTRY.md for $CURRENT_TAG [skip ci]"
+            git push origin "$DEFAULT_BRANCH"
+            echo "Pushed"
+          fi
