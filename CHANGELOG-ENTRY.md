@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.23] - 2026-04-21 (Release)
+
+### Commits
+
+- lol again one more commit
+
+---
+
 ## [0.0.21] - 2026-04-21 (Pre-Release)
 
 ### Commits
