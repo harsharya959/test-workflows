@@ -1,0 +1,246 @@
+name: Generate Changelog on Release
+
+on:
+  release:
+    types: [published, prereleased]
+
+permissions:
+  contents: write
+
+env:
+  # -------------------------------------------------------------------
+  # List all your tenants here, space-separated.
+  # These are the same tenant names your deploy matrix uses.
+  # -------------------------------------------------------------------
+  TENANT_LIST: "ingka inter"
+
+jobs:
+  generate-changelog:
+    name: "Generate Changelog"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ------------------------------------------------------------------
+      # 1. Basic release metadata
+      # ------------------------------------------------------------------
+      - name: Get Release Info
+        id: release-info
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          RELEASE_NAME="${{ github.event.release.name }}"
+          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+
+          RELEASE_TYPE="🚀 Release"
+          if [ "$IS_PRERELEASE" == "true" ]; then
+            RELEASE_TYPE="🔧 Pre-Release"
+          fi
+
+          echo "release_tag=$RELEASE_TAG"       >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE"   >> $GITHUB_OUTPUT
+          echo "release_name=$RELEASE_NAME"     >> $GITHUB_OUTPUT
+          echo "release_date=$RELEASE_DATE"     >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE"     >> $GITHUB_OUTPUT
+
+          echo "📦 Release Tag  : $RELEASE_TAG"
+          echo "📦 Release Type : $RELEASE_TYPE"
+          echo "📦 Release Date : $RELEASE_DATE"
+
+      # ------------------------------------------------------------------
+      # 2. Find the previous tag so we can diff commits
+      # ------------------------------------------------------------------
+      - name: Get Previous Tag
+        id: prev-tag
+        run: |
+          CURRENT_TAG="${{ steps.release-info.outputs.release_tag }}"
+
+          # Detect optional prefix (e.g. acme-v1.2.3 -> prefix="acme-")
+          PREFIX=""
+          if [[ "$CURRENT_TAG" =~ ^([a-z]+)-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            PREFIX="${BASH_REMATCH[1]}-"
+          fi
+
+          # All tags matching the same prefix, sorted by semver
+          ALL_TAGS=$(git tag -l | grep -E "^${PREFIX}v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V)
+
+          PREV_TAG=""
+          for TAG in $ALL_TAGS; do
+            [ "$TAG" == "$CURRENT_TAG" ] && break
+            PREV_TAG="$TAG"
+          done
+
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "prev_tag=$PREV_TAG"                   >> $GITHUB_OUTPUT
+            echo "prev_tag_display=Initial Commit"       >> $GITHUB_OUTPUT
+          else
+            echo "prev_tag=$PREV_TAG"                   >> $GITHUB_OUTPUT
+            echo "prev_tag_display=$PREV_TAG"           >> $GITHUB_OUTPUT
+          fi
+
+          echo "📌 Previous tag: ${PREV_TAG}"
+
+      # ------------------------------------------------------------------
+      # 3. Build the new CHANGELOG.md entry, then prepend to existing file
+      # ------------------------------------------------------------------
+      - name: Build Changelog Entry
+        id: build-changelog
+        run: |
+          CURRENT_TAG="${{ steps.release-info.outputs.release_tag }}"
+          PREV_TAG="${{ steps.prev-tag.outputs.prev_tag }}"
+          PREV_TAG_DISPLAY="${{ steps.prev-tag.outputs.prev_tag_display }}"
+          RELEASE_DATE="${{ steps.release-info.outputs.release_date }}"
+          RELEASE_TYPE="${{ steps.release-info.outputs.release_type }}"
+          REPO="${{ github.repository }}"
+          RELEASE_NAME="${{ steps.release-info.outputs.release_name }}"
+
+          # ----------------------------------------------------------------
+          # Build tenant deployment table
+          # For every tenant, find the latest tag that matches that tenant
+          # prefix OR fall back to the global (no-prefix) tag.
+          # ----------------------------------------------------------------
+          TENANT_TABLE=""
+          for TENANT in $TENANT_LIST; do
+            # Look for a prefixed tag for this tenant
+            TENANT_TAG=$(git tag -l | grep -E "^${TENANT}-v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n1)
+
+            # If no prefixed tag, fall back to the global tag that triggered this release
+            if [ -z "$TENANT_TAG" ]; then
+              TENANT_TAG="$CURRENT_TAG (global)"
+            fi
+
+            # Pad with pipe-separated columns
+            TENANT_TABLE="${TENANT_TABLE}| \`${TENANT}\` | \`${TENANT_TAG}\` |\n"
+          done
+
+          # ----------------------------------------------------------------
+          # Commits between previous and current tag
+          # Format: <short-sha> <subject> (@author)
+          # ----------------------------------------------------------------
+          COMMITS=$(git log "${PREV_TAG}..${CURRENT_TAG}" \
+            --pretty=format:"| [\`%h\`](https://github.com/${REPO}/commit/%H) | %s | @%an |" \
+            --no-merges)
+
+          if [ -z "$COMMITS" ]; then
+            COMMITS="| - | _No new commits_ | - |"
+          fi
+
+          # ----------------------------------------------------------------
+          # Write the new entry to a temp file
+          # ----------------------------------------------------------------
+          cat > /tmp/new_entry.md << ENTRY
+---
+
+## ${RELEASE_TYPE}: [${CURRENT_TAG}](https://github.com/${REPO}/releases/tag/${CURRENT_TAG}) &nbsp;|&nbsp; ${RELEASE_DATE}
+
+> **Release Name:** ${RELEASE_NAME}  
+> **Compare:** [${PREV_TAG_DISPLAY} → ${CURRENT_TAG}](https://github.com/${REPO}/compare/${PREV_TAG}...${CURRENT_TAG})
+
+### 🏢 Tenant Deployment Status
+
+| Tenant | Deployed Tag |
+|--------|--------------|
+$(echo -e "$TENANT_TABLE")
+
+### 📝 Commits
+
+| SHA | Message | Author |
+|-----|---------|--------|
+${COMMITS}
+
+ENTRY
+
+          echo "✅ New changelog entry written to /tmp/new_entry.md"
+          cat /tmp/new_entry.md
+
+      # ------------------------------------------------------------------
+      # 4. Prepend the new entry into CHANGELOG.md (create if missing)
+      # ------------------------------------------------------------------
+      - name: Update CHANGELOG.md
+        run: |
+          CURRENT_TAG="${{ steps.release-info.outputs.release_tag }}"
+          RELEASE_DATE="${{ steps.release-info.outputs.release_date }}"
+
+          CHANGELOG="CHANGELOG.md"
+
+          # Create the file with a header if it doesn't exist yet
+          if [ ! -f "$CHANGELOG" ]; then
+            cat > "$CHANGELOG" << 'EOF'
+# Changelog
+
+All releases are automatically tracked here. Each entry lists which tenants
+were deployed and what commits were included in that release.
+
+EOF
+            echo "📄 Created new CHANGELOG.md"
+          fi
+
+          # Prepend: header block stays at top, new entry goes right after
+          # Strategy: split on first '---' separator if it exists
+          if grep -q '^---$' "$CHANGELOG"; then
+            # File already has entries — insert new entry before the first ---
+            HEADER=$(awk '/^---$/{exit} {print}' "$CHANGELOG")
+            REST=$(awk 'found{print} /^---$/{found=1}' "$CHANGELOG")
+            {
+              echo "$HEADER"
+              cat /tmp/new_entry.md
+              echo ""
+              echo "$REST"
+            } > /tmp/changelog_new.md
+          else
+            # First entry ever — just append after the header
+            cat "$CHANGELOG" /tmp/new_entry.md > /tmp/changelog_new.md
+          fi
+
+          mv /tmp/changelog_new.md "$CHANGELOG"
+          echo "✅ CHANGELOG.md updated"
+
+      # ------------------------------------------------------------------
+      # 5. Commit and push the updated CHANGELOG.md back to main/master
+      # ------------------------------------------------------------------
+      - name: Commit and Push CHANGELOG.md
+        run: |
+          CURRENT_TAG="${{ steps.release-info.outputs.release_tag }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check out the default branch so we don't push to a detached HEAD
+          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout "$DEFAULT_BRANCH"
+
+          git add CHANGELOG.md
+
+          if git diff --cached --quiet; then
+            echo "⚠️ No changes to CHANGELOG.md, nothing to commit"
+          else
+            git commit -m "docs: update CHANGELOG.md for release $CURRENT_TAG [skip ci]"
+            git push origin "$DEFAULT_BRANCH"
+            echo "✅ CHANGELOG.md committed and pushed to $DEFAULT_BRANCH"
+          fi
+
+      # ------------------------------------------------------------------
+      # 6. Job summary
+      # ------------------------------------------------------------------
+      - name: Summary
+        run: |
+          CURRENT_TAG="${{ steps.release-info.outputs.release_tag }}"
+          RELEASE_TYPE="${{ steps.release-info.outputs.release_type }}"
+          PREV_TAG_DISPLAY="${{ steps.prev-tag.outputs.prev_tag_display }}"
+
+          echo "### 📋 Changelog Generation Result" >> $GITHUB_STEP_SUMMARY
+          echo ""                                   >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |"                  >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|"                  >> $GITHUB_STEP_SUMMARY
+          echo "| **Type** | $RELEASE_TYPE |"       >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`$CURRENT_TAG\` |"     >> $GITHUB_STEP_SUMMARY
+          echo "| **Previous** | \`$PREV_TAG_DISPLAY\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tenants** | \`${{ env.TENANT_LIST }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo ""                                   >> $GITHUB_STEP_SUMMARY
+          echo "✅ CHANGELOG.md updated and pushed" >> $GITHUB_STEP_SUMMARY
