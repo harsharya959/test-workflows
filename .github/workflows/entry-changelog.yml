@@ -21,10 +21,68 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------------------------------------------
+      # 1. Find the previous tag of the SAME release type via GitHub API
+      # ----------------------------------------------------------------
+      - name: Get Previous Tag (same release type)
+        id: prev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          PAGE=1
+          PREV_TAG=""
+
+          while true; do
+            # Fetch up to 100 releases per page
+            RELEASES=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/releases?per_page=100&page=${PAGE}")
+
+            # No more pages
+            COUNT=$(echo "$RELEASES" | jq 'length')
+            if [ "$COUNT" -eq 0 ]; then
+              break
+            fi
+
+            # Find the most recent release (other than current) that matches type
+            MATCH=$(echo "$RELEASES" | jq -r \
+              --arg current "$CURRENT_TAG" \
+              --argjson isprerelease "$IS_PRERELEASE" \
+              '[.[] | select(.tag_name != $current and .prerelease == $isprerelease and .draft == false)]
+               | sort_by(.created_at) | reverse | .[0].tag_name // ""')
+
+            if [ -n "$MATCH" ] && [ "$MATCH" != "null" ]; then
+              PREV_TAG="$MATCH"
+              break
+            fi
+
+            PAGE=$((PAGE + 1))
+          done
+
+          if [ -z "$PREV_TAG" ]; then
+            # No previous release of same type - fall back to first commit
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "prev_tag=$PREV_TAG"              >> $GITHUB_OUTPUT
+            echo "prev_tag_display=Initial Commit" >> $GITHUB_OUTPUT
+          else
+            echo "prev_tag=$PREV_TAG"              >> $GITHUB_OUTPUT
+            echo "prev_tag_display=$PREV_TAG"      >> $GITHUB_OUTPUT
+          fi
+
+          echo "Previous tag (same type): $PREV_TAG"
+
+      # ----------------------------------------------------------------
+      # 2. Build the changelog entry
+      # ----------------------------------------------------------------
       - name: Build Changelog Entry
         run: |
           CURRENT_TAG="${{ github.event.release.tag_name }}"
           IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          PREV_TAG="${{ steps.prev.outputs.prev_tag }}"
+          PREV_TAG_DISPLAY="${{ steps.prev.outputs.prev_tag_display }}"
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           VERSION="${CURRENT_TAG#v}"
           OUT="/tmp/new_entry.md"
@@ -35,19 +93,8 @@ jobs:
             RELEASE_TYPE="Release"
           fi
 
-          # Find previous tag
-          ALL_TAGS=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V)
-          PREV_TAG=""
-          for TAG in $ALL_TAGS; do
-            [ "$TAG" == "$CURRENT_TAG" ] && break
-            PREV_TAG="$TAG"
-          done
-          if [ -z "$PREV_TAG" ]; then
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
-
-          # Write entry
           printf '## [%s] - %s (%s)\n\n' "$VERSION" "$RELEASE_DATE" "$RELEASE_TYPE" > "$OUT"
+          printf '> Compare: **%s** → **%s**\n\n' "$PREV_TAG_DISPLAY" "$CURRENT_TAG" >> "$OUT"
 
           printf '### Commits\n\n' >> "$OUT"
 
@@ -60,6 +107,9 @@ jobs:
           echo "Entry:"
           cat "$OUT"
 
+      # ----------------------------------------------------------------
+      # 3. Prepend into CHANGELOG-ENTRY.md
+      # ----------------------------------------------------------------
       - name: Update CHANGELOG-ENTRY.md
         run: |
           CHANGELOG="CHANGELOG-ENTRY.md"
@@ -76,6 +126,9 @@ jobs:
             mv /tmp/merged.md "$CHANGELOG"
           fi
 
+      # ----------------------------------------------------------------
+      # 4. Commit and push
+      # ----------------------------------------------------------------
       - name: Commit and Push
         run: |
           CURRENT_TAG="${{ github.event.release.tag_name }}"
@@ -92,7 +145,7 @@ jobs:
           git clean -fd    2>/dev/null || true
 
           git checkout "$DEFAULT_BRANCH"
-          git pull origin "$DEFAULT_BRANCH" --ff-only
+          git pull --rebase origin "$DEFAULT_BRANCH"
 
           cp /tmp/changelog_final.md CHANGELOG-ENTRY.md
 
@@ -102,7 +155,6 @@ jobs:
             echo "No changes, skipping"
           else
             git commit -m "docs: update CHANGELOG-ENTRY.md for $CURRENT_TAG [skip ci]"
-            # Rebase on top of any commits that landed since our pull, then push
             git pull --rebase origin "$DEFAULT_BRANCH"
             git push origin "$DEFAULT_BRANCH"
             echo "Pushed"
