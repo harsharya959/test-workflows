@@ -29,9 +29,10 @@ jobs:
           VERSION="${CURRENT_TAG#v}"
           OUT="/tmp/new_entry.md"
 
-          RELEASE_TYPE="Release"
-          if [ "$IS_PRERELEASE" == "true" ]; then
+          if [ "$IS_PRERELEASE" = "true" ] || [ "$IS_PRERELEASE" = "True" ] || [ "$IS_PRERELEASE" = "1" ]; then
             RELEASE_TYPE="Pre-Release"
+          else
+            RELEASE_TYPE="Release"
           fi
 
           # Find previous tag
