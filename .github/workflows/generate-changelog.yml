@@ -109,11 +109,7 @@ jobs:
           printf '|--------|--------------|\n' >> "$OUT"
 
           for TENANT in $TENANT_LIST; do
-            TENANT_TAG=$(git tag -l | grep -E "^${TENANT}-v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n1)
-            if [ -z "$TENANT_TAG" ]; then
-              TENANT_TAG="${CURRENT_TAG} (global)"
-            fi
-            printf '| `%s` | `%s` |\n' "$TENANT" "$TENANT_TAG" >> "$OUT"
+            printf '| `%s` | `%s` |\n' "$TENANT" "$CURRENT_TAG" >> "$OUT"
           done
 
           printf '\n' >> "$OUT"
