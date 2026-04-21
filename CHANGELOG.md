@@ -3,6 +3,26 @@
 All releases are automatically tracked here.
 ---
 
+## Pre-Release: [v0.0.26](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.26) | 2026-04-21
+
+> **Release Name:** RELEASE-UI-0.0.26-prerelease
+> **Compare:** [v0.0.25 to v0.0.26](https://github.com/harsharya959/test-workflows/compare/v0.0.25...v0.0.26)
+
+### Tenant Deployment Status
+
+| Tenant | Deployed Tag |
+|--------|--------------|
+| `ingka` | `v0.0.26` |
+| `inter` | `v0.0.26` |
+
+### Commits
+
+| SHA | Message | Author |
+|-----|---------|--------|
+| [f4662d3](https://github.com/harsharya959/test-workflows/commit/f4662d34ffc08cca0806d6c64efd60cf42483a27) | Update README.md update 3 | @harsharya959 |
+
+
+
 ## Release: [v0.0.23](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.23) | 2026-04-21
 
 > **Release Name:** RELEASE-UI-0.0.23-prerelease
