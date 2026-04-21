@@ -176,15 +176,21 @@ jobs:
           DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
           git fetch origin "$DEFAULT_BRANCH"
 
-          # CHANGELOG.md may have been written as an untracked file during
-          # the build steps. Back it up, switch branches, then restore it.
-          cp /tmp/changelog_new.md /tmp/changelog_backup.md 2>/dev/null || true
-          cp CHANGELOG.md /tmp/changelog_backup.md 2>/dev/null || true
+          # Save the updated CHANGELOG.md outside the repo before switching branches
+          cp CHANGELOG.md /tmp/changelog_final.md
 
+          # Discard local changes so git checkout won't block
+          git checkout -- . 2>/dev/null || true
+          git clean -fd   2>/dev/null || true
+
+          # Switch to the default branch
           git checkout "$DEFAULT_BRANCH"
 
-          # Restore the updated changelog after branch switch
-          cp /tmp/changelog_backup.md CHANGELOG.md
+          # Pull latest to avoid push conflicts
+          git pull origin "$DEFAULT_BRANCH" --ff-only
+
+          # Restore the updated changelog
+          cp /tmp/changelog_final.md CHANGELOG.md
 
           git add CHANGELOG.md
 
