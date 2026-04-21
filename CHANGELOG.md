@@ -1,8 +1,28 @@
 # Changelog
 
 All releases are automatically tracked here.
-
 ---
+
+## Pre-Release: [v0.0.13](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.13) | 2026-04-21
+
+> **Release Name:** RELEASE-UI-0.0.13-prerelease
+> **Compare:** [v0.0.12 to v0.0.13](https://github.com/harsharya959/test-workflows/compare/v0.0.12...v0.0.13)
+
+### Tenant Deployment Status
+
+| Tenant | Deployed Tag |
+|--------|--------------|
+| `ingka` | `ingka-v0.0.6` |
+| `inter` | `inter-v0.0.2` |
+
+### Commits
+
+| SHA | Message | Author |
+|-----|---------|--------|
+| [1b79071](https://github.com/harsharya959/test-workflows/commit/1b79071e1d0b42ca41b18f8b17522e7c288b97eb) | Update generate-changelog.yml | @harsharya959 |
+| [1c85e46](https://github.com/harsharya959/test-workflows/commit/1c85e469ec44dbc34801bca546329ef7fad902b5) | docs: update CHANGELOG.md for v0.0.12 [skip ci] | @github-actions[bot] |
+
+
 
 ## Pre-Release: [v0.0.12](https://github.com/harsharya959/test-workflows/releases/tag/v0.0.12) | 2026-04-21
 
@@ -21,4 +41,3 @@ All releases are automatically tracked here.
 | SHA | Message | Author |
 |-----|---------|--------|
 | [912b9eb](https://github.com/harsharya959/test-workflows/commit/912b9ebab97f1908acb751154d62d6187b6e2e9f) | Update generate-changelog.yml | @harsharya959 |
-
