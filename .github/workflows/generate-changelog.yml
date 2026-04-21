@@ -8,8 +8,9 @@ permissions:
   contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # Space-separated list of tenants - same as your deploy matrix
-  TENANT_LIST: "tenant-a tenant-b tenant-c"
+  TENANT_LIST: "ingka inter"
 
 jobs:
   generate-changelog:
@@ -17,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +96,7 @@ jobs:
           OUT="/tmp/new_entry.md"
 
           # Header
-          printf '---\n\n' > "$OUT"
+          printf '%s\n\n' '---' > "$OUT"
           printf '## %s: [%s](https://github.com/%s/releases/tag/%s) | %s\n\n' \
             "$RELEASE_TYPE" "$CURRENT_TAG" "$REPO" "$CURRENT_TAG" "$RELEASE_DATE" >> "$OUT"
           printf '> **Release Name:** %s\n' "$RELEASE_NAME" >> "$OUT"
