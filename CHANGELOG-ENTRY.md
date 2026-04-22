@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.31] - 2026-04-22 (Stage)
+
+> **Compare:** [v0.0.30...v0.0.31](https://github.com/harsharya959/test-workflows/compare/v0.0.30...v0.0.31)
+
+### Commits
+
+- change to sdfjndsknfds Update entry-changelog.yml [8c6e234](https://github.com/harsharya959/test-workflows/commit/8c6e23436d8d021d97073e39f49686dd96cfc2cd)
+- docs: update CHANGELOG-ENTRY.md for v0.0.30 [skip ci] [b4a6fc0](https://github.com/harsharya959/test-workflows/commit/b4a6fc0fe255d1232bc36b509c6c8a8f4018c1ab)
+- docs: update CHANGELOG for v0.0.30 [79ce744](https://github.com/harsharya959/test-workflows/commit/79ce744e1111740cd78fe41a428b615dd17e7e4b)
+
+---
+
 ## [0.0.30] - 2026-04-22 (Pre-Release)
 
 > Compare: **v0.0.28** → **v0.0.30**
