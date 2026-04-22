@@ -3,6 +3,17 @@ name: Generate Changelog Entry on Release
 on:
   release:
     types: [published, prereleased]
+  
+  workflow_call:
+    inputs:
+      tag_name:
+        description: "Release tag name"
+        required: true
+        type: string
+      is_prerelease:
+        description: "Is this a prerelease"
+        required: true
+        type: boolean
 
 permissions:
   contents: write
@@ -29,8 +40,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          CURRENT_TAG: ${{ github.event.release.tag_name }}
-          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          CURRENT_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}
         run: |
           PAGE=1
           PREV_TAG=""
@@ -79,8 +90,8 @@ jobs:
       # ----------------------------------------------------------------
       - name: Build Changelog Entry
         run: |
-          CURRENT_TAG="${{ github.event.release.tag_name }}"
-          IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
+          IS_PRERELEASE="${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}"
           PREV_TAG="${{ steps.prev.outputs.prev_tag }}"
           PREV_TAG_DISPLAY="${{ steps.prev.outputs.prev_tag_display }}"
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
@@ -131,7 +142,7 @@ jobs:
       # ----------------------------------------------------------------
       - name: Commit and Push
         run: |
-          CURRENT_TAG="${{ github.event.release.tag_name }}"
+          CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
