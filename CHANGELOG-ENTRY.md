@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.30] - 2026-04-22 (Pre-Release)
+
+> Compare: **v0.0.28** → **v0.0.30**
+
+### Commits
+
+- Update entry-changelog.yml
+- Update manual-release-creation.yaml.yml
+- docs: update CHANGELOG for v0.0.28
+
+---
+
 ## [0.0.27] - 2026-04-21 (Pre-Release)
 
 > Compare: **v0.0.26** → **v0.0.27**
