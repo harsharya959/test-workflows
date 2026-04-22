@@ -97,20 +97,31 @@ jobs:
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           VERSION="${CURRENT_TAG#v}"
           OUT="/tmp/new_entry.md"
+          REPO="${{ github.repository }}"
+          REPO_URL="https://github.com/${REPO}"
 
           if [ "$IS_PRERELEASE" = "true" ] || [ "$IS_PRERELEASE" = "True" ] || [ "$IS_PRERELEASE" = "1" ]; then
-            RELEASE_TYPE="Pre-Release"
+            RELEASE_TYPE="Stage"
           else
-            RELEASE_TYPE="Release"
+            RELEASE_TYPE="Prod"
+          fi
+          
+          # Check if tag starts with hotfix-
+          if [[ "$CURRENT_TAG" =~ ^hotfix- ]]; then
+            RELEASE_TYPE="${RELEASE_TYPE}-Hotfix"
           fi
 
           printf '## [%s] - %s (%s)\n\n' "$VERSION" "$RELEASE_DATE" "$RELEASE_TYPE" > "$OUT"
-          printf '> Compare: **%s** → **%s**\n\n' "$PREV_TAG_DISPLAY" "$CURRENT_TAG" >> "$OUT"
+          
+          # Create compare link
+          printf '> **Compare:** [%s...%s](%s/compare/%s...%s)\n\n' \
+            "$PREV_TAG_DISPLAY" "$CURRENT_TAG" "$REPO_URL" "$PREV_TAG" "$CURRENT_TAG" >> "$OUT"
 
           printf '### Commits\n\n' >> "$OUT"
 
+          # Generate commits with hyperlinks to commit SHA
           git log "${PREV_TAG}..${CURRENT_TAG}" \
-            --pretty=format:"- %s" \
+            --pretty=format:"- %s [%h]($REPO_URL/commit/%H)" \
             --no-merges >> "$OUT"
 
           printf '\n\n%s\n\n' '---' >> "$OUT"
