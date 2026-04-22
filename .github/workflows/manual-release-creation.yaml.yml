@@ -4,18 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag (e.g., v1.0.0 or 1.0.0) - Leave empty to auto-increment from latest"
+        description: "Tag Version"
         required: false
         type: string
       tenant:
-        description: "Select Tenant"
+        description: "Tenant"
         required: true
         type: choice
         options:
           - inter
           - ingka
       environment:
-        description: "Select Environment"
+        description: "Environment"
         required: true
         type: choice
         options:
@@ -255,3 +255,12 @@ jobs:
           echo "**CHANGELOG:** ${{ steps.update-changelog.outputs.changelog_updated == 'true' && '✅ Updated' || 'ℹ️ No changes' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/$FULL_VERSION)" >> $GITHUB_STEP_SUMMARY
+
+  generate-changelog-entry:
+    name: "Generate Changelog Entry"
+    needs: [validate, create-release]
+    uses: ./.github/workflows/entry-changelog.yml
+    with:
+      tag_name: ${{ needs.validate.outputs.full_version }}
+      is_prerelease: ${{ needs.validate.outputs.release_type == 'prerelease' }}
+    secrets: inherit
