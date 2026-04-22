@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.36] - 2026-04-22 (Stage)
+
+> **Compare:** [hotfix-v0.0.1...v0.0.36](https://github.com/harsharya959/test-workflows/compare/hotfix-v0.0.1...v0.0.36)
+
+### Commits
+
+- Update README.md 3 [d054d11](https://github.com/harsharya959/test-workflows/commit/d054d1123d82c9a3d68055a757629871d8781ce0)
+- Update README.md 2 [d75d3e5](https://github.com/harsharya959/test-workflows/commit/d75d3e5acc6689c35509c03f34211bc9b8bdc3d0)
+- Update README.md 1 [3b1ca82](https://github.com/harsharya959/test-workflows/commit/3b1ca823d9d5e9df512e1ed90a2acd713e894c37)
+- huh one more commit Update README.md [fe8f3ef](https://github.com/harsharya959/test-workflows/commit/fe8f3ef1ec1e863c7641f44d96933a5cfef87865)
+- Delete .github/workflows/generate-changelog.yml [c5b24c5](https://github.com/harsharya959/test-workflows/commit/c5b24c5baec55b3ffe973e4c28952588b7659196)
+- docs: update CHANGELOG.md for hotfix-v0.0.1 [skip ci] [603589b](https://github.com/harsharya959/test-workflows/commit/603589bab7c721057be335f27a73fa8ba2e4435d)
+- docs: update CHANGELOG-ENTRY.md for hotfix-v0.0.1 [skip ci] [8a9a3c3](https://github.com/harsharya959/test-workflows/commit/8a9a3c30bff9924cce16e18769d7800de191e669)
+
+---
+
 ## [hotfix-v0.0.1] - 2026-04-22 (Stage-Hotfix)
 
 > **Compare:** [v0.0.31...hotfix-v0.0.1](https://github.com/harsharya959/test-workflows/compare/v0.0.31...hotfix-v0.0.1)
