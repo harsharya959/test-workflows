@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag (e.g., v1.0.0)"
-        required: true
+        description: "Version tag (e.g., v1.0.0 or 1.0.0) - Leave empty to auto-increment from latest"
+        required: false
         type: string
       tenant:
         description: "Select Tenant"
@@ -19,16 +19,8 @@ on:
         required: true
         type: choice
         options:
-          - dev
           - stage
           - prod
-      release_type:
-        description: "Release Type"
-        required: true
-        type: choice
-        options:
-          - prerelease
-          - release
 
 permissions:
   contents: write
@@ -40,67 +32,88 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       full_version: ${{ steps.calculate-version.outputs.full_version }}
+      release_type: ${{ steps.set-release-type.outputs.release_type }}
+      version: ${{ steps.calculate-version.outputs.version }}
     steps:
-      - name: Calculate Full Version with Tenant
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set Release Type
+        id: set-release-type
+        run: |
+          ENV="${{ inputs.environment }}"
+          
+          # Set release type based on environment
+          if [[ "$ENV" == "prod" ]]; then
+            RELEASE_TYPE="release"
+            echo "📦 Environment is prod → Release Type: release"
+          else
+            RELEASE_TYPE="prerelease"
+            echo "📦 Environment is stage → Release Type: prerelease"
+          fi
+          
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+      
+      - name: Get Latest Version (if not provided)
+        if: ${{ inputs.version == null || inputs.version == '' }}
+        id: get_latest_version
+        run: |
+          # Get latest tag (any format)
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags exist
+            echo "📌 No existing tags found"
+            echo "latest_version=" >> $GITHUB_ENV
+          else
+            # Use the latest tag as-is
+            echo "📌 Latest tag: $LATEST_TAG"
+            echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
+          fi
+      
+      - name: Calculate Full Version
         id: calculate-version
         run: |
-          VERSION="${{ inputs.version }}"
-          TENANT="${{ inputs.tenant }}"
+          # Determine version to use
+          if [ "${{ inputs.version }}" ]; then
+            echo "Using provided version: ${{ inputs.version }}"
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ env.latest_version }}" ]; then
+            echo "Using latest tag: ${{ env.latest_version }}"
+            VERSION="${{ env.latest_version }}"
+          else
+            echo "No version provided and no existing tags, starting with v0.0.1"
+            VERSION="v0.0.1"
+          fi
           
-          # Remove 'v' prefix if present
-          VERSION=${VERSION#v}
+          # Ensure version has 'v' prefix
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v${VERSION}"
+          fi
           
-          # Create tenant-prefixed version
-          FULL_VERSION="${TENANT}-v${VERSION}"
+          # Full version is the same as version (no tenant prefix)
+          FULL_VERSION="$VERSION"
           
+          # Extract version number without 'v' prefix for display
+          VERSION_NUM=${VERSION#v}
+          
+          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
           echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Full version tag: $FULL_VERSION"
+          echo "✅ Tag to use: $FULL_VERSION"
       
-      - name: Validate inputs
+      - name: Display Release Info
         run: |
-          TENANT="${{ inputs.tenant }}"
-          ENV="${{ inputs.environment }}"
-          VERSION="${{ inputs.version }}"
-          RELEASE_TYPE="${{ inputs.release_type }}"
-          
-          echo "📋 Validation Starting..."
-          
-          # Check all inputs are provided
-          if [[ -z "$VERSION" ]]; then
-            echo "❌ Error: 'version' is required"
-            exit 1
-          fi
-          
-          if [[ -z "$TENANT" ]]; then
-            echo "❌ Error: 'tenant' is required"
-            exit 1
-          fi
-          
-          if [[ -z "$ENV" ]]; then
-            echo "❌ Error: 'environment' is required"
-            exit 1
-          fi
-          
-          # Business rules
-          if [[ "$TENANT" == "inter" && "$ENV" == "dev" ]]; then
-            echo "❌ Error: 'inter' tenant cannot be deployed to 'dev' environment"
-            exit 1
-          fi
-          
-          if [[ "$RELEASE_TYPE" == "release" && "$ENV" != "prod" ]]; then
-            echo "⚠️  Warning: Creating full release for non-prod environment"
-          fi
-          
-          echo "✅ All validations passed!"
-          echo ""
-          echo "📦 Release Details:"
-          echo "  - Version: $VERSION"
-          echo "  - Tenant: $TENANT"
-          echo "  - Environment: $ENV"
-          echo "  - Type: $RELEASE_TYPE"
+          echo "📋 Release Information"
+          echo "  - Tenant: ${{ inputs.tenant }}"
+          echo "  - Environment: ${{ inputs.environment }}"
+          echo "  - Version: ${{ steps.calculate-version.outputs.version }}"
+          echo "  - Full Tag: ${{ steps.calculate-version.outputs.full_version }}"
+          echo "  - Release Type: ${{ steps.set-release-type.outputs.release_type }}"
 
   create-release:
-    name: "Create ${{ inputs.release_type }}: ${{ needs.validate.outputs.full_version }}"
+    name: "Create ${{ needs.validate.outputs.release_type }}: ${{ needs.validate.outputs.full_version }}"
     runs-on: ubuntu-latest
     needs: [validate]
     steps:
@@ -115,10 +128,10 @@ jobs:
           FULL_VERSION="${{ needs.validate.outputs.full_version }}"
           if git rev-parse "$FULL_VERSION" >/dev/null 2>&1; then
             echo "tag_exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Tag $FULL_VERSION already exists"
+            echo "ℹ️  Tag $FULL_VERSION already exists, will use it for release"
           else
             echo "tag_exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag $FULL_VERSION is available"
+            echo "✅ Tag $FULL_VERSION doesn't exist, will create it"
           fi
       
       - name: Create Tag (if needed)
@@ -182,14 +195,14 @@ jobs:
           NOTES=$(cat <<EOF
           ## 🚀 Deployment Information
           
-          This ${{ inputs.release_type }} is for **${{ inputs.tenant }}-${{ inputs.environment }}** environment.
+          This ${{ needs.validate.outputs.release_type }} is for **${{ inputs.tenant }}-${{ inputs.environment }}** environment.
           
           ### 📋 Details
           - **🏢 Tenant:** \`${{ inputs.tenant }}\`
           - **🌍 Environment:** \`${{ inputs.environment }}\`
-          - **📦 Version:** \`${{ inputs.version }}\`
+          - **📦 Version:** \`${{ needs.validate.outputs.version }}\`
           - **🔖 Full Tag:** \`$FULL_VERSION\`
-          - **📑 Type:** \`${{ inputs.release_type }}\`
+          - **📑 Type:** \`${{ needs.validate.outputs.release_type }}\`
           - **📅 Created:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           - **👤 Triggered by:** @${{ github.actor }}
           
@@ -214,11 +227,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate.outputs.full_version }}
-          name: "[${{ inputs.tenant }}] ${{ inputs.version }} - ${{ inputs.environment }}"
+          name: "[${{ inputs.tenant }}] Release ${{ needs.validate.outputs.version }} - ${{ inputs.environment }}"
           body_path: release_notes.md
-          prerelease: ${{ inputs.release_type == 'prerelease' }}
+          prerelease: ${{ needs.validate.outputs.release_type == 'prerelease' }}
           draft: false
-          make_latest: false
+          make_latest: ${{ needs.validate.outputs.release_type == 'release' }}
       
       - name: Create Deployment Record
         uses: chrnorm/deployment-action@v2
@@ -235,9 +248,9 @@ jobs:
           
           echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Full Tag:** \`$FULL_VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Type:** \`${{ inputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** \`${{ needs.validate.outputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ inputs.tenant }}-${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**CHANGELOG:** ${{ steps.update-changelog.outputs.changelog_updated == 'true' && '✅ Updated' || 'ℹ️ No changes' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
