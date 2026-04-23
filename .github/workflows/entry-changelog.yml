@@ -1,4 +1,4 @@
-name: Generate Changelog Entry on Release
+name: Generate Changelog
 
 on:
   release:
