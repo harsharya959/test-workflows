@@ -1,9 +1,6 @@
 name: Generate Changelog
 
 on:
-  release:
-    types: [published, prereleased]
-  
   workflow_call:
     inputs:
       tag_name:
