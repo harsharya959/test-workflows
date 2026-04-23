@@ -25,15 +25,16 @@ on:
 permissions:
   contents: write
   deployments: write
+  id-token: write
+  repository-projects: write
 
 jobs:
   validate:
     name: "Validate Inputs"
     runs-on: ubuntu-latest
     outputs:
-      full_version: ${{ steps.calculate-version.outputs.full_version }}
+      tag_version: ${{ steps.calculate-version.outputs.tag_version }}
       release_type: ${{ steps.set-release-type.outputs.release_type }}
-      version: ${{ steps.calculate-version.outputs.version }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -56,211 +57,64 @@ jobs:
           
           echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
       
-      - name: Get Latest Version (if not provided)
-        if: ${{ inputs.version == null || inputs.version == '' }}
-        id: get_latest_version
-        run: |
-          # Get latest tag (any format)
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
-          if [ -z "$LATEST_TAG" ]; then
-            # No tags exist
-            echo "📌 No existing tags found"
-            echo "latest_version=" >> $GITHUB_ENV
-          else
-            # Use the latest tag as-is
-            echo "📌 Latest tag: $LATEST_TAG"
-            echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
-          fi
-      
-      - name: Calculate Full Version
+      - name: Calculate Version
         id: calculate-version
         run: |
-          # Determine version to use
-          if [ "${{ inputs.version }}" ]; then
-            echo "Using provided version: ${{ inputs.version }}"
-            VERSION="${{ inputs.version }}"
-          elif [ "${{ env.latest_version }}" ]; then
-            echo "Using latest tag: ${{ env.latest_version }}"
-            VERSION="${{ env.latest_version }}"
-          else
-            echo "No version provided and no existing tags, starting with v0.0.1"
-            VERSION="v0.0.1"
+          # Check if version is provided
+          if [ -z "${{ inputs.version }}" ]; then
+            echo "❌ Error: Version is required"
+            echo "Please provide a version tag"
+            exit 1
           fi
           
-          # Ensure version has 'v' prefix
-          if [[ ! "$VERSION" =~ ^v ]]; then
-            VERSION="v${VERSION}"
+          TAG_VERSION="${{ inputs.version }}"
+          echo "Using provided version: $TAG_VERSION"
+          
+          # Check if tag exists in repository
+          if ! git rev-parse "$TAG_VERSION" >/dev/null 2>&1; then
+            echo "❌ Error: Tag '$TAG_VERSION' does not exist in repository"
+            echo "Please create the tag first or provide an existing tag"
+            exit 1
           fi
           
-          # Full version is the same as version (no tenant prefix)
-          FULL_VERSION="$VERSION"
-          
-          # Extract version number without 'v' prefix for display
-          VERSION_NUM=${VERSION#v}
-          
-          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
-          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
-          echo "✅ Tag to use: $FULL_VERSION"
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Tag to use: $TAG_VERSION"
       
       - name: Display Release Info
         run: |
           echo "📋 Release Information"
           echo "  - Tenant: ${{ inputs.tenant }}"
           echo "  - Environment: ${{ inputs.environment }}"
-          echo "  - Version: ${{ steps.calculate-version.outputs.version }}"
-          echo "  - Full Tag: ${{ steps.calculate-version.outputs.full_version }}"
+          echo "  - Tag Version: ${{ steps.calculate-version.outputs.tag_version }}"
           echo "  - Release Type: ${{ steps.set-release-type.outputs.release_type }}"
 
-  create-release:
-    name: "Create ${{ needs.validate.outputs.release_type }}: ${{ needs.validate.outputs.full_version }}"
-    runs-on: ubuntu-latest
-    needs: [validate]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Check if tag exists
-        id: check-tag
-        run: |
-          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
-          if git rev-parse "$FULL_VERSION" >/dev/null 2>&1; then
-            echo "tag_exists=true" >> $GITHUB_OUTPUT
-            echo "ℹ️  Tag $FULL_VERSION already exists, will use it for release"
-          else
-            echo "tag_exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag $FULL_VERSION doesn't exist, will create it"
-          fi
-      
-      - name: Create Tag (if needed)
-        if: steps.check-tag.outputs.tag_exists == 'false'
-        run: |
-          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git tag -a "$FULL_VERSION" -m "Release $FULL_VERSION for ${{ inputs.tenant }}-${{ inputs.environment }}"
-          git push origin "$FULL_VERSION"
-          
-          echo "✅ Created tag: $FULL_VERSION"
-      
-      # ========== CHANGELOG UPDATE STEP ==========
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Update CHANGELOG
-        id: update-changelog
-        run: |
-          # Install conventional-changelog
-          npm install -g conventional-changelog-cli
-          
-          # Create CHANGELOG.md if it doesn't exist
-          if [ ! -f CHANGELOG.md ]; then
-            echo "# Changelog" > CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            echo "All notable changes to this project will be documented in this file." >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-          fi
-          
-          # Generate changelog
-          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
-          
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Commit if there are changes
-          if git diff --quiet CHANGELOG.md; then
-            echo "changelog_updated=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No changes to CHANGELOG.md"
-          else
-            git add CHANGELOG.md
-            git commit -m "docs: update CHANGELOG for ${{ needs.validate.outputs.full_version }}"
-            git push origin HEAD:${{ github.event.repository.default_branch }}
-            echo "changelog_updated=true" >> $GITHUB_OUTPUT
-            echo "✅ CHANGELOG.md updated and committed"
-          fi
-      # ========== END CHANGELOG UPDATE ==========
-      
-      - name: Generate Release Notes
-        id: release-notes
-        run: |
-          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
-          
-          NOTES=$(cat <<EOF
-          ## 🚀 Deployment Information
-          
-          This ${{ needs.validate.outputs.release_type }} is for **${{ inputs.tenant }}-${{ inputs.environment }}** environment.
-          
-          ### 📋 Details
-          - **🏢 Tenant:** \`${{ inputs.tenant }}\`
-          - **🌍 Environment:** \`${{ inputs.environment }}\`
-          - **📦 Version:** \`${{ needs.validate.outputs.version }}\`
-          - **🔖 Full Tag:** \`$FULL_VERSION\`
-          - **📑 Type:** \`${{ needs.validate.outputs.release_type }}\`
-          - **📅 Created:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          - **👤 Triggered by:** @${{ github.actor }}
-          
-          ### 🔗 Links
-          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          - [Commit](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-          - [CHANGELOG](CHANGELOG.md)
-          
-          ---
-          
-          _Automated release created via GitHub Actions_
-          EOF
-          )
-          
-          echo "$NOTES" > release_notes.md
-          
-          echo "### 📝 Release Notes Preview" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "$NOTES" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.validate.outputs.full_version }}
-          name: "[${{ inputs.tenant }}] Release ${{ needs.validate.outputs.version }} - ${{ inputs.environment }}"
-          body_path: release_notes.md
-          prerelease: ${{ needs.validate.outputs.release_type == 'prerelease' }}
-          draft: false
-          make_latest: ${{ needs.validate.outputs.release_type == 'release' }}
-      
-      - name: Create Deployment Record
-        uses: chrnorm/deployment-action@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: ${{ inputs.tenant }}-${{ inputs.environment }}
-          ref: ${{ needs.validate.outputs.full_version }}
-          initial-status: success
-          description: "Released ${{ needs.validate.outputs.full_version }} to ${{ inputs.tenant }}-${{ inputs.environment }}"
-      
-      - name: Summary
-        run: |
-          FULL_VERSION="${{ needs.validate.outputs.full_version }}"
-          
-          echo "### ✅ Release Created Successfully" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ needs.validate.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Full Tag:** \`$FULL_VERSION\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Type:** \`${{ needs.validate.outputs.release_type }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Target:** \`${{ inputs.tenant }}-${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**CHANGELOG:** ${{ steps.update-changelog.outputs.changelog_updated == 'true' && '✅ Updated' || 'ℹ️ No changes' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 [View Release](${{ github.server_url }}/${{ github.repository }}/releases/tag/$FULL_VERSION)" >> $GITHUB_STEP_SUMMARY
+  # docker:
+  #   name: "Building Docker Image: ${{ inputs.environment }}"
+  #   needs: [validate, create-release]
+  #   uses: ./.github/workflows/docker.yaml
+  #   secrets: inherit
+  #   if: ${{ needs.validate.outputs.tag_version != '' }}
+  #   with:
+  #     environment: ${{ inputs.environment }}
+  #     tenant: ${{ inputs.tenant }}
+  #     version: ${{ needs.validate.outputs.tag_version }}
+
+  # deploy:
+  #   name: "Deployment: ${{ inputs.environment }}"
+  #   needs: [validate, create-release, docker]
+  #   uses: ./.github/workflows/deployment.yaml
+  #   secrets: inherit
+  #   if: ${{ needs.validate.outputs.tag_version != '' }}
+  #   with:
+  #     environment: ${{ inputs.environment }}
+  #     tenant: ${{ inputs.tenant }}
+  #     version: ${{ needs.validate.outputs.tag_version }}
 
   generate-changelog-entry:
     name: "Generate Changelog Entry"
-    needs: [validate, create-release]
-    uses: ./.github/workflows/entry-changelog.yml
+    needs: [validate, create-release, deploy]
+    uses: ./.github/workflows/generate-changelog.yml
     with:
-      tag_name: ${{ needs.validate.outputs.full_version }}
+      tag_name: ${{ needs.validate.outputs.tag_version }}
       is_prerelease: ${{ needs.validate.outputs.release_type == 'prerelease' }}
     secrets: inherit
