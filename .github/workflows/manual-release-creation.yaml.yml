@@ -117,4 +117,5 @@ jobs:
     with:
       tag_name: ${{ needs.validate.outputs.tag_version }}
       is_prerelease: ${{ needs.validate.outputs.release_type == 'prerelease' }}
+      tenant: ${{ inputs.tenant }}
     secrets: inherit
