@@ -11,5 +11,5 @@
 
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
-| stage | v0.0.26 | sonika-prakash-17 | 2026-04-23 07:31 UTC |
+| stage | v0.0.56 | harsharya959 | 2026-04-24 07:27 UTC |
 | prod | v0.0.26 | sonika-prakash-17 | 2026-04-23 07:32 UTC |
