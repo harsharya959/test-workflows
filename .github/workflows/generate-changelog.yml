@@ -38,72 +38,64 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------------------------------------------
-      # 1. Find the previous tag of the SAME release type via GitHub API
+      # 1. Get previous tag from RELEASES.md based on tenant and environment
       # ----------------------------------------------------------------
-      - name: Get Previous Tag (same release type)
+      - name: Get Previous Tag from RELEASES.md
         id: prev
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
           CURRENT_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
           IS_PRERELEASE: ${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}
+          TENANT: ${{ inputs.tenant }}
         run: |
-          PAGE=1
-          PREV_TAG=""
+          RELEASES_FILE="RELEASES.md"
           
-          echo "🔍 Searching for previous tag of same type..."
-          echo "Current tag: $CURRENT_TAG"
-          echo "Is prerelease: $IS_PRERELEASE"
-          echo ""
-
-          while true; do
-            echo "📄 Fetching page $PAGE..."
-            # Fetch up to 50 releases per page
-            RELEASES=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${REPO}/releases?per_page=50&page=${PAGE}")
-
-            # No more pages
-            COUNT=$(echo "$RELEASES" | jq 'length')
-            echo "   Found $COUNT releases on this page"
-            
-            if [ "$COUNT" -eq 0 ]; then
-              echo "   No more pages to fetch"
-              break
-            fi
-
-            # Find the most recent release (other than current) that matches type
-            MATCH=$(echo "$RELEASES" | jq -r \
-              --arg current "$CURRENT_TAG" \
-              --argjson isprerelease "$IS_PRERELEASE" \
-              '[.[] | select(.tag_name != $current and .prerelease == $isprerelease and .draft == false)]
-               | sort_by(.created_at) | reverse | .[0].tag_name // ""')
-
-            echo "   Match result: '$MATCH'"
-
-            if [ -n "$MATCH" ] && [ "$MATCH" != "null" ]; then
-              PREV_TAG="$MATCH"
-              echo "   ✅ Found matching previous tag: $PREV_TAG"
-              break
-            fi
-
-            echo "   ⏭️  No match on this page, checking next page..."
-            PAGE=$((PAGE + 1))
-          done
+          # Determine environment from prerelease flag
+          if [ "$IS_PRERELEASE" = "true" ] || [ "$IS_PRERELEASE" = "True" ]; then
+            ENVIRONMENT="stage"
+          else
+            ENVIRONMENT="prod"
+          fi
           
+          echo "🔍 Looking for previous version in RELEASES.md"
+          echo "  - Tenant: $TENANT"
+          echo "  - Environment: $ENVIRONMENT"
+          echo "  - Current tag: $CURRENT_TAG"
           echo ""
-
-          if [ -z "$PREV_TAG" ]; then
-            # No previous release of same type - fall back to first commit
+          
+          # Check if RELEASES.md exists
+          if [ ! -f "$RELEASES_FILE" ]; then
+            echo "⚠️  RELEASES.md not found, using first commit as previous tag"
             PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-            echo "prev_tag=$PREV_TAG"              >> $GITHUB_OUTPUT
+            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+            echo "prev_tag_display=Initial Commit" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Extract version from RELEASES.md for the given tenant and environment
+          PREV_TAG=$(awk -v tenant="$TENANT" -v env="$ENVIRONMENT" '
+            $0 == "### " tenant { in_section = 1; next }
+            in_section && /^### / { in_section = 0 }
+            in_section && $0 ~ ("^\\|[[:space:]]*" env "[[:space:]]*\\|") {
+              match($0, /\|[[:space:]]*[^|]+[[:space:]]*\|[[:space:]]*([^|]+)[[:space:]]*\|/, arr)
+              version = arr[1]
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", version)
+              if (version != "-" && version != "") {
+                print version
+                exit
+              }
+            }
+          ' "$RELEASES_FILE")
+          
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "-" ]; then
+            echo "⚠️  No previous version found in RELEASES.md, using first commit"
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
             echo "prev_tag_display=Initial Commit" >> $GITHUB_OUTPUT
           else
-            echo "prev_tag=$PREV_TAG"              >> $GITHUB_OUTPUT
-            echo "prev_tag_display=$PREV_TAG"      >> $GITHUB_OUTPUT
+            echo "✅ Found previous version: $PREV_TAG"
+            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+            echo "prev_tag_display=$PREV_TAG" >> $GITHUB_OUTPUT
           fi
-
-          echo "Previous tag (same type): $PREV_TAG"
 
       # ----------------------------------------------------------------
       # 2. Build the new changelog entry
