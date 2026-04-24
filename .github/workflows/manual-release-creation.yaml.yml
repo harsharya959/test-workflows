@@ -90,7 +90,7 @@ jobs:
 
   # docker:
   #   name: "Building Docker Image: ${{ inputs.environment }}"
-  #   needs: [validate, create-release]
+  #   needs: [validate]
   #   uses: ./.github/workflows/docker.yaml
   #   secrets: inherit
   #   if: ${{ needs.validate.outputs.tag_version != '' }}
@@ -112,7 +112,8 @@ jobs:
 
   generate-changelog-entry:
     name: "Generate Changelog Entry"
-    needs: [validate, create-release, deploy]
+    # needs: [validate, deploy]
+    needs: [validate]
     uses: ./.github/workflows/generate-changelog.yml
     with:
       tag_name: ${{ needs.validate.outputs.tag_version }}
