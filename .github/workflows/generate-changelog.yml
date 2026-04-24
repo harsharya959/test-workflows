@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   changelog:
-    name: "Append Changelog Entry"
+    name: "Append Changelog"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -64,11 +64,9 @@ jobs:
           
           # Check if RELEASES.md exists
           if [ ! -f "$RELEASES_FILE" ]; then
-            echo "⚠️  RELEASES.md not found, using first commit as previous tag"
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-            echo "prev_tag_display=Initial Commit" >> $GITHUB_OUTPUT
-            exit 0
+            echo "❌ Error: RELEASES.md not found"
+            echo "Please ensure RELEASES.md exists and has deployment history"
+            exit 1
           fi
           
           # Extract version from RELEASES.md for the given tenant and environment
@@ -87,15 +85,23 @@ jobs:
           ' "$RELEASES_FILE")
           
           if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "-" ]; then
-            echo "⚠️  No previous version found in RELEASES.md, using first commit"
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-            echo "prev_tag_display=Initial Commit" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Found previous version: $PREV_TAG"
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-            echo "prev_tag_display=$PREV_TAG" >> $GITHUB_OUTPUT
+            echo "❌ Error: No previous version found in RELEASES.md"
+            echo "Please deploy to this tenant/environment at least once before generating changelog"
+            exit 1
           fi
+          
+          echo "✅ Found previous version: $PREV_TAG"
+          
+          # Validate that the previous tag exists in the repository
+          if ! git show-ref --tags "refs/tags/$PREV_TAG" >/dev/null 2>&1; then
+            echo "❌ Error: Previous tag '$PREV_TAG' does not exist in repository"
+            echo "The RELEASES.md file contains an invalid or non-existent tag"
+            exit 1
+          fi
+          
+          echo "✅ Previous tag validated: $PREV_TAG"
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+          echo "prev_tag_display=$PREV_TAG" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------
       # 2. Build the new changelog entry
