@@ -36,6 +36,11 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.repository.default_branch }}
+      
+      - name: Pull Latest Changes
+        run: |
+          git pull origin ${{ github.event.repository.default_branch }}
 
       # ----------------------------------------------------------------
       # 1. Get previous tag from RELEASES.md based on tenant and environment
@@ -113,7 +118,7 @@ jobs:
           TENANT="${{ inputs.tenant }}"
           PREV_TAG="${{ steps.prev.outputs.prev_tag }}"
           PREV_TAG_DISPLAY="${{ steps.prev.outputs.prev_tag_display }}"
-          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+          RELEASE_DATETIME=$(date -u +"%Y-%m-%d %H:%M UTC")
           VERSION="$CURRENT_TAG"
           OUT="/tmp/new_entry.md"
           REPO="${{ github.repository }}"
@@ -130,7 +135,7 @@ jobs:
             RELEASE_TYPE="${RELEASE_TYPE}-Hotfix"
           fi
 
-          printf '## [%s] - %s (%s) [Tenant-%s]\n\n' "$VERSION" "$RELEASE_DATE" "$RELEASE_TYPE" "$TENANT" > "$OUT"
+          printf '## [%s] - %s (%s) [Tenant-%s]\n\n' "$VERSION" "$RELEASE_DATETIME" "$RELEASE_TYPE" "$TENANT" > "$OUT"
           
           # Create compare link
           printf '> **Compare:** [%s...%s](%s/compare/%s...%s)\n\n' \
