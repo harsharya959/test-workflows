@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.0.75] - 2026-04-27 09:07 UTC (Prod) [Tenant-ingka]
+
+> **Compare:** [v0.0.71...v0.0.75](https://github.com/harsharya959/test-workflows/compare/v0.0.71...v0.0.75)
+
+### Commits
+
+- Update trigger-tenant-deployment.yml [e545cde](https://github.com/harsharya959/test-workflows/commit/e545cde7dc79d8b624b5180267392bf95bcb1ed6)
+- Update generate-changelog.yml [c4169c3](https://github.com/harsharya959/test-workflows/commit/c4169c3a6cdcb2c11df69235404130c45f706a4d)
+- docs: update CHANGELOG.md for v0.0.73 [skip ci] [430ab78](https://github.com/harsharya959/test-workflows/commit/430ab78363fc9a80c750267c7e1b9d621aab7b44)
+- chore: update release notes [env=stage] [inter=v0.0.73] [11d52dc](https://github.com/harsharya959/test-workflows/commit/11d52dc463dcc4023fda77be1941ce7c8c704702)
+- Update generate-changelog.yml [b4ceb7e](https://github.com/harsharya959/test-workflows/commit/b4ceb7efa639c5761bfaafec1b81a1e7fdfc976e)
+- docs: update CHANGELOG.md for v0.0.72 [skip ci] [bc069d7](https://github.com/harsharya959/test-workflows/commit/bc069d7a22415b456e1f5904d50a80f4a29b2671)
+- chore: update release notes [env=stage] [inter=v0.0.72] [8d6f24d](https://github.com/harsharya959/test-workflows/commit/8d6f24d660ba2f1ec55437d3c167d80b23ddc666)
+- Update README.md [b256319](https://github.com/harsharya959/test-workflows/commit/b2563191ef9a5b575f0a76775840da886fb596cc)
+- docs: update CHANGELOG.md for v0.0.71 [skip ci] [f1d4fdd](https://github.com/harsharya959/test-workflows/commit/f1d4fdd421410e6ee3c16b309adc44106d7749cf)
+- chore: update release notes [env=stage] [inter=v0.0.71] [81ad38a](https://github.com/harsharya959/test-workflows/commit/81ad38a9ef2065a3a544d7ae485ba0cc38eacc5d)
+
+---
+
 ## [v0.0.75] - 2026-04-27 09:05 UTC (Stage) [Tenant-ingka]
 
 > **Compare:** [v0.0.70...v0.0.75](https://github.com/harsharya959/test-workflows/compare/v0.0.70...v0.0.75)
@@ -139,16 +158,6 @@
 ## [v0.0.69] - 2026-04-27 03:13 UTC (Stage) [Tenant-inter]
 
 > **Compare:** [v0.0.69...v0.0.69](https://github.com/harsharya959/test-workflows/compare/v0.0.69...v0.0.69)
-
-### Commits
-
-
-
----
-
-## [v0.0.65] - 2026-04-24 11:14 UTC (Stage) [Tenant-inter]
-
-> **Compare:** [v0.0.65...v0.0.65](https://github.com/harsharya959/test-workflows/compare/v0.0.65...v0.0.65)
 
 ### Commits
 
