@@ -115,7 +115,6 @@ jobs:
     uses: ./.github/workflows/generate-changelog-v2.yml
     with:
       tag_version: ${{ needs.validate-tag.outputs.tag_version }}
-      is_prerelease: ${{ needs.validate-tag.outputs.release_type == 'prerelease' }}
       tenant: ${{ inputs.tenant }}
       environment: ${{ inputs.environment }}
     secrets: inherit
