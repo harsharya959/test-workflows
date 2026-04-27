@@ -4,7 +4,7 @@
 
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
-| stage | v0.0.46 | sonika-prakash-17 | 2026-04-27 10:48 UTC |
+| stage | v0.0.88 | harsharya959 | 2026-04-27 11:28 UTC |
 | prod | - | - | - |
 
 
@@ -21,6 +21,8 @@
 
 
 
+
+
 <!-- VERSIONS_JSON
 {
   "ingka": {
@@ -28,7 +30,7 @@
     "prod": "v0.0.80"
   },
   "inter": {
-    "stage": "v0.0.81",
+    "stage": "v0.0.88",
     "prod": "-"
   }
 }
