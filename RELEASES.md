@@ -24,11 +24,11 @@
 <!-- VERSIONS_JSON
 {
   "ingka": {
-    "stage": "v0.0.46",
-    "prod": "v0.0.46"
+    "stage": "v0.0.80",
+    "prod": "v0.0.80"
   },
   "inter": {
-    "stage": "v0.0.46",
+    "stage": "v0.0.81",
     "prod": "-"
   }
 }
