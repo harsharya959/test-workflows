@@ -1,6 +1,16 @@
 # Changelog
 
 
+## [v0.0.94] (inter/stage) - 2026-04-27 11:46 UTC
+
+> **Compare:** [v0.0.94...v0.0.94](https://github.com/harsharya959/test-workflows/compare/v0.0.94...v0.0.94)
+
+### Commits
+
+
+
+---
+
 ## [v0.0.91] (ingka/prod) - 2026-04-27 11:35 UTC
 
 > **Compare:** [v0.0.80...v0.0.91](https://github.com/harsharya959/test-workflows/compare/v0.0.80...v0.0.91)
