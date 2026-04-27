@@ -49,10 +49,10 @@ jobs:
           # Set release type based on environment
           if [[ "$ENV" == "prod" ]]; then
             RELEASE_TYPE="release"
-            echo "📦 Environment is prod → Release Type: release"
+            echo "Environment is prod → Release Type: release"
           else
             RELEASE_TYPE="prerelease"
-            echo "📦 Environment is stage → Release Type: prerelease"
+            echo "Environment is stage → Release Type: prerelease"
           fi
           
           echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
@@ -62,8 +62,7 @@ jobs:
         run: |
           # Check if version is provided
           if [ -z "${{ inputs.version }}" ]; then
-            echo "❌ Error: Version is required"
-            echo "Please provide a tag version"
+            echo "Error: Version is required. Please provide a tag version"
             exit 1
           fi
           
@@ -72,21 +71,20 @@ jobs:
           
           # Check if the provided version is a valid tag
           if ! git show-ref --tags "refs/tags/$TAG_VERSION" >/dev/null 2>&1; then
-            echo "❌ Error: '$TAG_VERSION' is not a valid tag"
-            echo "Please provide a valid tag that exists in the repository"
+            echo "Error: '$TAG_VERSION' is not a valid tag. Please provide a valid tag that exists in the repository"
             exit 1
           fi
           
           echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
-          echo "✅ Tag to use: $TAG_VERSION"
+          echo "Tag to use: $TAG_VERSION"
       
       - name: Display Release Info
         run: |
-          echo "📋 Release Information"
-          echo "  - Tenant: ${{ inputs.tenant }}"
-          echo "  - Environment: ${{ inputs.environment }}"
-          echo "  - Tag Version: ${{ steps.calculate-version.outputs.tag_version }}"
-          echo "  - Release Type: ${{ steps.set-release-type.outputs.release_type }}"
+          echo "Release Information"
+          echo "- Tenant: ${{ inputs.tenant }}"
+          echo "- Environment: ${{ inputs.environment }}"
+          echo "- Tag Version: ${{ steps.calculate-version.outputs.tag_version }}"
+          echo "- Release Type: ${{ steps.set-release-type.outputs.release_type }}"
 
   # docker:
   #   name: "Building Docker Image: ${{ inputs.environment }}"
