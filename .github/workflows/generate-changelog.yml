@@ -172,20 +172,20 @@ jobs:
           ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
           echo "  Found $ENTRY_COUNT entries"
           
-          if [ "$ENTRY_COUNT" -gt 10 ]; then
-            echo "  Trimming to 10 latest entries..."
+          if [ "$ENTRY_COUNT" -gt 50 ]; then
+            echo "  Trimming to 50 latest entries..."
             
             # Extract header (first 2 lines: "# Changelog\n\n")
             head -2 "$CHANGELOG" > /tmp/trimmed.md
             
-            # Get only the first 10 entries from the body
+            # Get only the first 50 entries from the body
             tail -n +3 "$CHANGELOG" | awk '
               /^## \[/ { count++ }
-              count <= 10 { print }
+              count <= 50 { print }
             ' >> /tmp/trimmed.md
             
             mv /tmp/trimmed.md "$CHANGELOG"
-            echo "✅ Kept latest 10 entries, removed $(($ENTRY_COUNT - 10)) old entries"
+            echo "✅ Kept latest 50 entries, removed $(($ENTRY_COUNT - 50)) old entries"
           else
             echo "  No trimming needed"
           fi
@@ -202,21 +202,12 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
-          git fetch origin "$DEFAULT_BRANCH"
-
-          git checkout -- . 2>/dev/null || true
-          git clean -fd    2>/dev/null || true
-
-          git checkout "$DEFAULT_BRANCH"
-          git pull --rebase origin "$DEFAULT_BRANCH"
-
           git add CHANGELOG.md
 
           if git diff --cached --quiet; then
             echo "No changes, skipping"
           else
             git commit -m "docs: update CHANGELOG.md for $CURRENT_TAG [skip ci]"
-            git push origin "$DEFAULT_BRANCH"
+            git push origin HEAD
             echo "Pushed"
           fi
