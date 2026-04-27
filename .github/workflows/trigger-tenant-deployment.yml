@@ -112,11 +112,12 @@ jobs:
     name: "Generate Changelog Entry"
     # needs: [validate-tag, deploy]
     needs: [validate-tag]
-    uses: ./.github/workflows/generate-changelog.yml
+    uses: ./.github/workflows/generate-changelog-v2.yml
     with:
-      tag_name: ${{ needs.validate-tag.outputs.tag_version }}
+      tag_version: ${{ needs.validate-tag.outputs.tag_version }}
       is_prerelease: ${{ needs.validate-tag.outputs.release_type == 'prerelease' }}
       tenant: ${{ inputs.tenant }}
+      environment: ${{ inputs.environment }}
     secrets: inherit
 
   update-releases-table:
