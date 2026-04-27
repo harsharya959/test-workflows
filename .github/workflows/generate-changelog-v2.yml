@@ -1,0 +1,158 @@
+name: Generate Changelog V2
+
+on:
+  workflow_call:
+    inputs:
+      tag_version:
+        description: "Release tag version"
+        required: true
+        type: string
+      tenant:
+        description: "Tenant name"
+        required: true
+        type: string
+      environment:
+        description: "Environment name"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: changelog-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    name: "Append Changelog"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.tenant }}-${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.repository.default_branch }}
+      
+      - name: Pull Latest Changes
+        run: |
+          git pull origin ${{ github.event.repository.default_branch }}
+
+      - name: Get Previous Deployed Tag
+        id: prev
+        env:
+          CURRENT_TAG: ${{ inputs.tag_version }}
+          LATEST_DEPLOYED_TAG: ${{ vars.LATEST_DEPLOYED_TAG }}
+        run: |
+          echo "Looking for previous deployed tag"
+          echo "- Environment variable LATEST_DEPLOYED_TAG: $LATEST_DEPLOYED_TAG"
+          echo "- Current tag: $CURRENT_TAG"
+          echo ""
+          
+          if [ -z "$LATEST_DEPLOYED_TAG" ] || [ "$LATEST_DEPLOYED_TAG" = "-" ]; then
+            echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+            PREV_TAG="$CURRENT_TAG"
+          else
+            echo "Found previous deployed tag: $LATEST_DEPLOYED_TAG"
+            PREV_TAG="$LATEST_DEPLOYED_TAG"
+          fi
+          
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Build New Changelog Entry
+        run: |
+          MAX_CHANGELOG_ENTRIES=50
+          CURRENT_TAG="${{ inputs.tag_version }}"
+          TENANT="${{ inputs.tenant }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          PREV_TAG="${{ steps.prev.outputs.prev_tag }}"
+          RELEASE_DATETIME=$(date -u +"%Y-%m-%d %H:%M UTC")
+          VERSION="$CURRENT_TAG"
+          OUT="/tmp/new_entry.md"
+          REPO="${{ github.repository }}"
+          REPO_URL="https://github.com/${REPO}"
+          
+          # Check if tag starts with hotfix-
+          if [[ "$CURRENT_TAG" =~ ^hotfix- ]]; then
+            ENVIRONMENT="${ENVIRONMENT}-hotfix"
+          fi
+
+          # Generate commits list
+          COMMITS=$(git log "${PREV_TAG}..${CURRENT_TAG}" \
+            --pretty=format:"- %s [%h]($REPO_URL/commit/%H)" \
+            --no-merges)
+
+          # Load template and replace placeholders
+          TEMPLATE=".github/templates/changelog-entry.md"
+          sed -e "s|{{VERSION}}|$VERSION|g" \
+              -e "s|{{TENANT}}|$TENANT|g" \
+              -e "s|{{ENVIRONMENT}}|$ENVIRONMENT|g" \
+              -e "s|{{RELEASE_DATETIME}}|$RELEASE_DATETIME|g" \
+              -e "s|{{PREV_TAG}}|$PREV_TAG|g" \
+              -e "s|{{CURRENT_TAG}}|$CURRENT_TAG|g" \
+              -e "s|{{REPO_URL}}|$REPO_URL|g" \
+              "$TEMPLATE" > "$OUT"
+          
+          # Replace {{COMMITS}} placeholder with actual commits
+          awk -v commits="$COMMITS" '
+            /{{COMMITS}}/ { print commits; next }
+            { print }
+          ' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+
+          echo "Generated entry:"
+          cat "$OUT"
+          
+          # Merge the new entry into CHANGELOG.md
+          CHANGELOG="CHANGELOG.md"
+          if [ ! -f "$CHANGELOG" ]; then
+            {
+              echo "# Changelog"
+              echo ""
+              cat "$OUT"
+            } > "$CHANGELOG"
+            echo "Created new CHANGELOG.md"
+          else
+            # Insert new entry after header
+            {
+              head -2 "$CHANGELOG"
+              echo ""
+              cat "$OUT"
+              tail -n +3 "$CHANGELOG"
+            } > "$CHANGELOG.tmp" && mv "$CHANGELOG.tmp" "$CHANGELOG"
+            echo "Added new entry to CHANGELOG.md"
+          fi
+          
+          # Trim to keep only latest entries
+          ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
+          if [ "$ENTRY_COUNT" -gt "$MAX_CHANGELOG_ENTRIES" ]; then
+            {
+              head -2 "$CHANGELOG"
+              tail -n +3 "$CHANGELOG" | awk -v max="$MAX_CHANGELOG_ENTRIES" '
+                /^## \[/ { count++ }
+                count <= max { print }
+              '
+            } > "$CHANGELOG.tmp" && mv "$CHANGELOG.tmp" "$CHANGELOG"
+            echo "Trimmed to $MAX_CHANGELOG_ENTRIES entries"
+          fi
+
+      - name: Commit and Push
+        run: |
+          CURRENT_TAG="${{ inputs.tag_version }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+
+          if git diff --cached --quiet; then
+            echo "No changes, skipping"
+          else
+            git commit -m "docs: update CHANGELOG.md for $CURRENT_TAG [skip ci]"
+            git push origin HEAD
+            echo "Pushed"
+          fi
