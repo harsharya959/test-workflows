@@ -31,8 +31,8 @@ jobs:
     name: "Append Changelog"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4.2.2
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -152,27 +152,8 @@ jobs:
 
           echo "Entry:"
           cat "$OUT"
-
-      # ----------------------------------------------------------------
-      # 3. Commit and push
-      # ----------------------------------------------------------------
-      - name: Commit and Push
-        run: |
-          CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
-          git fetch origin "$DEFAULT_BRANCH"
-
-          git checkout -- . 2>/dev/null || true
-          git clean -fd    2>/dev/null || true
-
-          git checkout "$DEFAULT_BRANCH"
-          git pull --rebase origin "$DEFAULT_BRANCH"
-
-          # Now merge our new entry into the latest CHANGELOG.md
+          
+          # Now merge the new entry into CHANGELOG.md
           CHANGELOG="CHANGELOG.md"
           if [ ! -f "$CHANGELOG" ]; then
             printf '# Changelog\n\n' > "$CHANGELOG"
@@ -185,6 +166,50 @@ jobs:
             printf '%s\n' "$BODY" >> /tmp/merged.md
             mv /tmp/merged.md "$CHANGELOG"
           fi
+          
+          # Keep only the latest 50 entries
+          echo "🔍 Checking entry count..."
+          ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
+          echo "  Found $ENTRY_COUNT entries"
+          
+          if [ "$ENTRY_COUNT" -gt 50 ]; then
+            echo "  Trimming to 50 latest entries..."
+            
+            # Extract header (first 2 lines: "# Changelog\n\n")
+            head -2 "$CHANGELOG" > /tmp/trimmed.md
+            
+            # Get only the first 50 entries from the body
+            tail -n +3 "$CHANGELOG" | awk '
+              /^## \[/ { count++ }
+              count <= 50 { print }
+            ' >> /tmp/trimmed.md
+            
+            mv /tmp/trimmed.md "$CHANGELOG"
+            echo "✅ Kept latest 50 entries, removed $(($ENTRY_COUNT - 50)) old entries"
+          else
+            echo "  No trimming needed"
+          fi
+          
+          echo "✅ CHANGELOG.md updated"
+
+      # ----------------------------------------------------------------
+      # 3. Commit and push
+      # ----------------------------------------------------------------
+      - name: Commit and Push
+        run: |
+          CURRENT_TAG="${{ inputs.tag_name }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+          git fetch origin "$DEFAULT_BRANCH"
+
+          git checkout -- . 2>/dev/null || true
+          git clean -fd    2>/dev/null || true
+
+          git checkout "$DEFAULT_BRANCH"
+          git pull --rebase origin "$DEFAULT_BRANCH"
 
           git add CHANGELOG.md
 
