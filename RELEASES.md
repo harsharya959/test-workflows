@@ -14,7 +14,9 @@
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
 | stage | v0.0.90 | harsharya959 | 2026-04-27 11:32 UTC |
-| prod | v0.0.46 | sonika-prakash-17 | 2026-04-27 10:50 UTC |
+| prod | v0.0.91 | harsharya959 | 2026-04-27 11:35 UTC |
+
+
 
 
 
@@ -31,7 +33,7 @@
 {
   "ingka": {
     "stage": "v0.0.90",
-    "prod": "v0.0.80"
+    "prod": "v0.0.91"
   },
   "inter": {
     "stage": "v0.0.88",
