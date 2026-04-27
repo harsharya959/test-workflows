@@ -113,7 +113,7 @@ jobs:
       # ----------------------------------------------------------------
       - name: Build New Changelog Entry
         run: |
-          MAX_CHANGELOG_ENTRIES=50
+          MAX_CHANGELOG_ENTRIES=10
           CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
           IS_PRERELEASE="${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}"
           TENANT="${{ inputs.tenant }}"
