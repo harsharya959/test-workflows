@@ -5,7 +5,7 @@
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
 | stage | v0.0.75 | harsharya959 | 2026-04-27 09:05 UTC |
-| prod | v0.0.26 | sonika-prakash-17 | 2026-04-23 07:32 UTC |
+| prod | v0.0.75 | harsharya959 | 2026-04-27 09:07 UTC |
 
 ### inter
 
