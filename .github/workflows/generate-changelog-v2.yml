@@ -45,28 +45,40 @@ jobs:
 
       - name: Get Previous Deployed Tag
         id: prev
-        env:
-          CURRENT_TAG: ${{ inputs.tag_version }}
-          LATEST_DEPLOYED_TAG: ${{ vars.LATEST_DEPLOYED_TAG }}
         run: |
+          CURRENT_TAG="${{ inputs.tag_version }}"
+          TENANT="${{ inputs.tenant }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          
           echo "Looking for previous deployed tag"
-          echo "- Environment variable LATEST_DEPLOYED_TAG: $LATEST_DEPLOYED_TAG"
+          echo "- Tenant: $TENANT"
+          echo "- Environment: $ENVIRONMENT"
           echo "- Current tag: $CURRENT_TAG"
           echo ""
           
-          if [ -z "$LATEST_DEPLOYED_TAG" ] || [ "$LATEST_DEPLOYED_TAG" = "-" ]; then
-            echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+          # Extract JSON block from RELEASES.md
+          VERSIONS=$(awk '/<!-- VERSIONS_JSON/{found=1; next} /VERSIONS_JSON -->/{found=0} found' RELEASES.md)
+          
+          if [ -z "$VERSIONS" ]; then
+            echo "No VERSIONS_JSON block found in RELEASES.md"
             PREV_TAG="$CURRENT_TAG"
           else
-            echo "Found previous deployed tag: $LATEST_DEPLOYED_TAG"
-            PREV_TAG="$LATEST_DEPLOYED_TAG"
+            # Parse JSON to get tag for specific tenant and environment
+            PREV_TAG=$(echo "$VERSIONS" | jq -r --arg t "$TENANT" --arg e "$ENVIRONMENT" '.[$t][$e]')
+            
+            if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "null" ] || [ "$PREV_TAG" = "-" ]; then
+              echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+              PREV_TAG="$CURRENT_TAG"
+            else
+              echo "Found previous deployed tag: $PREV_TAG"
+            fi
           fi
           
           echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
       - name: Build New Changelog Entry
         run: |
-          MAX_CHANGELOG_ENTRIES=10
+          MAX_CHANGELOG_ENTRIES=50
           CURRENT_TAG="${{ inputs.tag_version }}"
           TENANT="${{ inputs.tenant }}"
           ENVIRONMENT="${{ inputs.environment }}"
