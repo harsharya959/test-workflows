@@ -110,10 +110,20 @@ jobs:
   #     tenant: ${{ inputs.tenant }}
   #     version: ${{ needs.validate-tag.outputs.tag_version }}
 
+  generate-changelog-entry:
+    name: "Generate Changelog Entry"
+    needs: [validate-tag, deploy]
+    uses: ./.github/workflows/generate-changelog.yml
+    with:
+      tag_name: ${{ needs.validate-tag.outputs.tag_version }}
+      is_prerelease: ${{ needs.validate-tag.outputs.release_type == 'prerelease' }}
+      tenant: ${{ inputs.tenant }}
+    secrets: inherit
+
   update-releases-table:
     name: Update Releases Table
     # needs: [validate-tag, docker, deploy]
-    needs: [validate-tag]
+    needs: [validate-tag, generate-changelog-entry]
     if: ${{ needs.validate-tag.outputs.tag_version != '' }}
     runs-on: ubuntu-latest
     steps:
@@ -126,14 +136,3 @@ jobs:
           git config user.email "github-actions@github.com"
       - name: Update release notes
         run: make deploy DEPLOYED_BY=${{ github.actor }} ENV=${{ inputs.environment }} TENANT=${{ inputs.tenant }} TAG=${{ needs.validate-tag.outputs.tag_version }}
-
-  generate-changelog-entry:
-    name: "Generate Changelog Entry"
-    # needs: [validate-tag, deploy]
-    needs: [validate-tag, update-releases-table]
-    uses: ./.github/workflows/generate-changelog.yml
-    with:
-      tag_name: ${{ needs.validate-tag.outputs.tag_version }}
-      is_prerelease: ${{ needs.validate-tag.outputs.release_type == 'prerelease' }}
-      tenant: ${{ inputs.tenant }}
-    secrets: inherit
