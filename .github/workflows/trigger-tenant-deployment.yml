@@ -112,7 +112,8 @@ jobs:
 
   generate-changelog-entry:
     name: "Generate Changelog Entry"
-    needs: [validate-tag, deploy]
+    # needs: [validate-tag, deploy]
+    needs: [validate-tag]
     uses: ./.github/workflows/generate-changelog.yml
     with:
       tag_name: ${{ needs.validate-tag.outputs.tag_version }}
