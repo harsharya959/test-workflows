@@ -172,20 +172,20 @@ jobs:
           ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
           echo "  Found $ENTRY_COUNT entries"
           
-          if [ "$ENTRY_COUNT" -gt 50 ]; then
-            echo "  Trimming to 50 latest entries..."
+          if [ "$ENTRY_COUNT" -gt 10 ]; then
+            echo "  Trimming to 10 latest entries..."
             
             # Extract header (first 2 lines: "# Changelog\n\n")
             head -2 "$CHANGELOG" > /tmp/trimmed.md
             
-            # Get only the first 50 entries from the body
+            # Get only the first 10 entries from the body
             tail -n +3 "$CHANGELOG" | awk '
               /^## \[/ { count++ }
-              count <= 50 { print }
+              count <= 10 { print }
             ' >> /tmp/trimmed.md
             
             mv /tmp/trimmed.md "$CHANGELOG"
-            echo "✅ Kept latest 50 entries, removed $(($ENTRY_COUNT - 50)) old entries"
+            echo "✅ Kept latest 10 entries, removed $(($ENTRY_COUNT - 10)) old entries"
           else
             echo "  No trimming needed"
           fi
