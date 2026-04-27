@@ -1,6 +1,35 @@
 # Changelog
 
 
+## [v0.0.90] (ingka/stage) - 2026-04-27 11:32 UTC
+
+> **Compare:** [v0.0.80...v0.0.90](https://github.com/harsharya959/test-workflows/compare/v0.0.80...v0.0.90)
+
+### Commits
+
+- Update generate-changelog-v2.yml [eabcf92](https://github.com/harsharya959/test-workflows/commit/eabcf92313ae32c4f7dc919ea09cf90efc2e823a)
+- Update releases.mk [3430e73](https://github.com/harsharya959/test-workflows/commit/3430e73890232532c02c628c5e7a421b0096f000)
+- Update RELEASES.md [61c4870](https://github.com/harsharya959/test-workflows/commit/61c48706e21f32fd90dd9ab7bc9842dfc139143f)
+- chore: update release notes [env=stage] [inter=v0.0.78] [9a8e6c4](https://github.com/harsharya959/test-workflows/commit/9a8e6c4b68363717576d6848c63842fae1d3a793)
+- docs: update CHANGELOG.md for v0.0.78 [skip ci] [1cce17c](https://github.com/harsharya959/test-workflows/commit/1cce17c8d546110f15e9096a3463af465ac67d34)
+- Update generate-changelog-v2.yml [f18d3e9](https://github.com/harsharya959/test-workflows/commit/f18d3e982848ca923c60525d2ec911a064633d20)
+- chore: update release notes [env=stage] [inter=v0.0.77] [221486d](https://github.com/harsharya959/test-workflows/commit/221486d8d60947d657fbd1e90a44c1e41fe5b066)
+- docs: update CHANGELOG.md for v0.0.77 [skip ci] [4f521c9](https://github.com/harsharya959/test-workflows/commit/4f521c9fb651666942c34b74decb984019073722)
+- Create changelog-entry.md [3da97cc](https://github.com/harsharya959/test-workflows/commit/3da97cc4c31ae603e1e8ad0cbacdd9638877eaf0)
+- Delete .github/workflows/templates/changelog-entry.md [722284d](https://github.com/harsharya959/test-workflows/commit/722284d6382243087674ac7f6744cacc9bac6563)
+- Update trigger-tenant-deployment.yml [6844453](https://github.com/harsharya959/test-workflows/commit/6844453be6d31b5f40150e2e08a78f38dedbb3a9)
+- Update trigger-tenant-deployment.yml [7659e10](https://github.com/harsharya959/test-workflows/commit/7659e1078556e919a218b2e222dc3caf02a93055)
+- Create generate-changelog-v2.yml [4d03074](https://github.com/harsharya959/test-workflows/commit/4d03074ab8b32381108740f536cce15246a6bccb)
+- Create changelog-entry.md [99d04d5](https://github.com/harsharya959/test-workflows/commit/99d04d5680b5d2f0a401a7a5230063c7482fb580)
+- chore: update release notes [env=prod] [ingka=v0.0.75] [a56860a](https://github.com/harsharya959/test-workflows/commit/a56860a78dbc548c8fd785d0f22e93fafd26b4a8)
+- docs: update CHANGELOG.md for v0.0.75 [skip ci] [59ef4f2](https://github.com/harsharya959/test-workflows/commit/59ef4f2237e3e1a6336dd7301e3cfd4c72b74d61)
+- chore: update release notes [env=stage] [ingka=v0.0.75] [8ba66b5](https://github.com/harsharya959/test-workflows/commit/8ba66b539facb9346d4ccc1df0b9bb174d47ac90)
+- docs: update CHANGELOG.md for v0.0.75 [skip ci] [ce076c8](https://github.com/harsharya959/test-workflows/commit/ce076c84fa55b0e09ba5f01774617e6d9c16d929)
+- chore: update release notes [env=prod] [inter=v0.0.80] [b2b54fa](https://github.com/harsharya959/test-workflows/commit/b2b54fa1ef93a5b860e7983b6ca158a7bc349be9)
+- docs: update CHANGELOG.md for v0.0.80 [skip ci] [04fd523](https://github.com/harsharya959/test-workflows/commit/04fd5233bb1c959fb0a72ee6f81ce6b8df03eaad)
+
+---
+
 ## [v0.0.88] (inter/prod) - 2026-04-27 11:30 UTC
 
 > **Compare:** [v0.0.88...v0.0.88](https://github.com/harsharya959/test-workflows/compare/v0.0.88...v0.0.88)
