@@ -66,7 +66,7 @@ jobs:
 
       - name: Build New Changelog Entry
         run: |
-          MAX_CHANGELOG_ENTRIES=50
+          MAX_CHANGELOG_ENTRIES=10
           CURRENT_TAG="${{ inputs.tag_version }}"
           TENANT="${{ inputs.tenant }}"
           ENVIRONMENT="${{ inputs.environment }}"
