@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.69] - 2026-04-27 03:13 UTC (Stage) [Tenant-inter]
+
+> **Compare:** [v0.0.69...v0.0.69](https://github.com/harsharya959/test-workflows/compare/v0.0.69...v0.0.69)
+
+### Commits
+
+
+
+---
+
 ## [v0.0.65] - 2026-04-24 11:14 UTC (Stage) [Tenant-inter]
 
 > **Compare:** [v0.0.65...v0.0.65](https://github.com/harsharya959/test-workflows/compare/v0.0.65...v0.0.65)
