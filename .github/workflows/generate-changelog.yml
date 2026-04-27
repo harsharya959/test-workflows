@@ -69,55 +69,55 @@ jobs:
           
           # Check if RELEASES.md exists
           if [ ! -f "$RELEASES_FILE" ]; then
-            echo "❌ Error: RELEASES.md not found"
-            echo "Please ensure RELEASES.md exists and has deployment history"
-            exit 1
-          fi
-          
-          # Extract version from RELEASES.md for the given tenant and environment
-          PREV_TAG=$(awk -v tenant="$TENANT" -v env="$ENVIRONMENT" '
-            $0 == "### " tenant { in_section = 1; next }
-            in_section && /^### / { in_section = 0 }
-            in_section && $0 ~ ("^\\|[[:space:]]*" env "[[:space:]]*\\|") {
-              match($0, /\|[[:space:]]*[^|]+[[:space:]]*\|[[:space:]]*([^|]+)[[:space:]]*\|/, arr)
-              version = arr[1]
-              gsub(/^[[:space:]]+|[[:space:]]+$/, "", version)
-              if (version != "-" && version != "") {
-                print version
-                exit
+            echo "⚠️  RELEASES.md not found"
+            echo "Treating as first deployment (no previous version)"
+            PREV_TAG="-"
+          else
+            # Extract version from RELEASES.md for the given tenant and environment
+            PREV_TAG=$(awk -v tenant="$TENANT" -v env="$ENVIRONMENT" '
+              $0 == "### " tenant { in_section = 1; next }
+              in_section && /^### / { in_section = 0 }
+              in_section && $0 ~ ("^\\|[[:space:]]*" env "[[:space:]]*\\|") {
+                match($0, /\|[[:space:]]*[^|]+[[:space:]]*\|[[:space:]]*([^|]+)[[:space:]]*\|/, arr)
+                version = arr[1]
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", version)
+                if (version != "-" && version != "") {
+                  print version
+                  exit
+                }
               }
-            }
-          ' "$RELEASES_FILE")
+            ' "$RELEASES_FILE")
+          fi
           
           if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "-" ]; then
-            echo "❌ Error: No previous version found in RELEASES.md"
-            echo "Please deploy to this tenant/environment at least once before generating changelog"
-            exit 1
+            echo "⚠️  No previous version found in RELEASES.md"
+            echo "Using current tag as previous tag (first deployment for this tenant/environment)"
+            PREV_TAG="$CURRENT_TAG"
+            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Found previous version: $PREV_TAG"
+            
+            # Validate that the previous tag exists in the repository
+            if ! git show-ref --tags "refs/tags/$PREV_TAG" >/dev/null 2>&1; then
+              echo "❌ Error: Previous tag '$PREV_TAG' does not exist in repository"
+              echo "The RELEASES.md file contains an invalid or non-existent tag"
+              exit 1
+            fi
+            
+            echo "✅ Previous tag validated: $PREV_TAG"
+            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
           fi
-          
-          echo "✅ Found previous version: $PREV_TAG"
-          
-          # Validate that the previous tag exists in the repository
-          if ! git show-ref --tags "refs/tags/$PREV_TAG" >/dev/null 2>&1; then
-            echo "❌ Error: Previous tag '$PREV_TAG' does not exist in repository"
-            echo "The RELEASES.md file contains an invalid or non-existent tag"
-            exit 1
-          fi
-          
-          echo "✅ Previous tag validated: $PREV_TAG"
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          echo "prev_tag_display=$PREV_TAG" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------
       # 2. Build the new changelog entry
       # ----------------------------------------------------------------
       - name: Build New Changelog Entry
         run: |
+          MAX_CHANGELOG_ENTRIES=50
           CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
           IS_PRERELEASE="${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}"
           TENANT="${{ inputs.tenant }}"
           PREV_TAG="${{ steps.prev.outputs.prev_tag }}"
-          PREV_TAG_DISPLAY="${{ steps.prev.outputs.prev_tag_display }}"
           RELEASE_DATETIME=$(date -u +"%Y-%m-%d %H:%M UTC")
           VERSION="$CURRENT_TAG"
           OUT="/tmp/new_entry.md"
@@ -139,7 +139,7 @@ jobs:
           
           # Create compare link
           printf '> **Compare:** [%s...%s](%s/compare/%s...%s)\n\n' \
-            "$PREV_TAG_DISPLAY" "$CURRENT_TAG" "$REPO_URL" "$PREV_TAG" "$CURRENT_TAG" >> "$OUT"
+            "$PREV_TAG" "$CURRENT_TAG" "$REPO_URL" "$PREV_TAG" "$CURRENT_TAG" >> "$OUT"
 
           printf '### Commits\n\n' >> "$OUT"
 
@@ -167,25 +167,25 @@ jobs:
             mv /tmp/merged.md "$CHANGELOG"
           fi
           
-          # Keep only the latest 10 entries
+          # Keep only the latest $MAX_CHANGELOG_ENTRIES entries
           echo "🔍 Checking entry count..."
           ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
           echo "  Found $ENTRY_COUNT entries"
           
-          if [ "$ENTRY_COUNT" -gt 10 ]; then
-            echo "  Trimming to 10 latest entries..."
+          if [ "$ENTRY_COUNT" -gt "$MAX_CHANGELOG_ENTRIES" ]; then
+            echo "  Trimming to $MAX_CHANGELOG_ENTRIES latest entries..."
             
             # Extract header (first 2 lines: "# Changelog\n\n")
             head -2 "$CHANGELOG" > /tmp/trimmed.md
             
-            # Get only the first 10 entries from the body
-            tail -n +3 "$CHANGELOG" | awk '
+            # Get only the first $MAX_CHANGELOG_ENTRIES entries from the body
+            tail -n +3 "$CHANGELOG" | awk -v max="$MAX_CHANGELOG_ENTRIES" '
               /^## \[/ { count++ }
-              count <= 10 { print }
+              count <= max { print }
             ' >> /tmp/trimmed.md
             
             mv /tmp/trimmed.md "$CHANGELOG"
-            echo "✅ Kept latest 10 entries, removed $(($ENTRY_COUNT - 10)) old entries"
+            echo "✅ Kept latest $MAX_CHANGELOG_ENTRIES entries, removed $(($ENTRY_COUNT - $MAX_CHANGELOG_ENTRIES)) old entries"
           else
             echo "  No trimming needed"
           fi
