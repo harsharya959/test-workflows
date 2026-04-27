@@ -30,6 +30,7 @@ jobs:
   changelog:
     name: "Append Changelog"
     runs-on: ubuntu-latest
+    environment: ${{ inputs.tenant }}-${{ inputs.is_prerelease && 'stage' || 'prod' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -43,77 +44,36 @@ jobs:
           git pull origin ${{ github.event.repository.default_branch }}
 
       # ----------------------------------------------------------------
-      # 1. Get previous tag from RELEASES.md based on tenant and environment
+      # 1. Get previous deployed tag from environment variable
       # ----------------------------------------------------------------
-      - name: Get Previous Tag from RELEASES.md
+      - name: Get Previous Deployed Tag
         id: prev
         env:
           CURRENT_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
-          IS_PRERELEASE: ${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}
-          TENANT: ${{ inputs.tenant }}
+          LATEST_DEPLOYED_TAG: ${{ vars.LATEST_DEPLOYED_TAG }}
         run: |
-          RELEASES_FILE="RELEASES.md"
-          
-          # Determine environment from prerelease flag
-          if [ "$IS_PRERELEASE" = "true" ] || [ "$IS_PRERELEASE" = "True" ]; then
-            ENVIRONMENT="stage"
-          else
-            ENVIRONMENT="prod"
-          fi
-          
-          echo "🔍 Looking for previous version in RELEASES.md"
-          echo "  - Tenant: $TENANT"
-          echo "  - Environment: $ENVIRONMENT"
-          echo "  - Current tag: $CURRENT_TAG"
+          echo "Looking for previous deployed tag"
+          echo "- Environment variable LATEST_DEPLOYED_TAG: $LATEST_DEPLOYED_TAG"
+          echo "- Current tag: $CURRENT_TAG"
           echo ""
           
-          # Check if RELEASES.md exists
-          if [ ! -f "$RELEASES_FILE" ]; then
-            echo "⚠️  RELEASES.md not found"
-            echo "Treating as first deployment (no previous version)"
-            PREV_TAG="-"
+          # Use environment variable for previous tag
+          if [ -z "$LATEST_DEPLOYED_TAG" ] || [ "$LATEST_DEPLOYED_TAG" = "-" ]; then
+            echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+            PREV_TAG="$CURRENT_TAG"
           else
-            # Extract version from RELEASES.md for the given tenant and environment
-            PREV_TAG=$(awk -v tenant="$TENANT" -v env="$ENVIRONMENT" '
-              $0 == "### " tenant { in_section = 1; next }
-              in_section && /^### / { in_section = 0 }
-              in_section && $0 ~ ("^\\|[[:space:]]*" env "[[:space:]]*\\|") {
-                match($0, /\|[[:space:]]*[^|]+[[:space:]]*\|[[:space:]]*([^|]+)[[:space:]]*\|/, arr)
-                version = arr[1]
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", version)
-                if (version != "-" && version != "") {
-                  print version
-                  exit
-                }
-              }
-            ' "$RELEASES_FILE")
+            echo "Found previous deployed tag: $LATEST_DEPLOYED_TAG"
+            PREV_TAG="$LATEST_DEPLOYED_TAG"
           fi
           
-          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "-" ]; then
-            echo "⚠️  No previous version found in RELEASES.md"
-            echo "Using current tag as previous tag (first deployment for this tenant/environment)"
-            PREV_TAG="$CURRENT_TAG"
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Found previous version: $PREV_TAG"
-            
-            # Validate that the previous tag exists in the repository
-            if ! git show-ref --tags "refs/tags/$PREV_TAG" >/dev/null 2>&1; then
-              echo "❌ Error: Previous tag '$PREV_TAG' does not exist in repository"
-              echo "The RELEASES.md file contains an invalid or non-existent tag"
-              exit 1
-            fi
-            
-            echo "✅ Previous tag validated: $PREV_TAG"
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          fi
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------
       # 2. Build the new changelog entry
       # ----------------------------------------------------------------
       - name: Build New Changelog Entry
         run: |
-          MAX_CHANGELOG_ENTRIES=10
+          MAX_CHANGELOG_ENTRIES=50
           CURRENT_TAG="${{ inputs.tag_name || github.event.release.tag_name }}"
           IS_PRERELEASE="${{ inputs.is_prerelease != null && inputs.is_prerelease || github.event.release.prerelease }}"
           TENANT="${{ inputs.tenant }}"
@@ -168,9 +128,9 @@ jobs:
           fi
           
           # Keep only the latest $MAX_CHANGELOG_ENTRIES entries
-          echo "🔍 Checking entry count..."
+          echo "Checking entry count..."
           ENTRY_COUNT=$(grep -c '^## \[' "$CHANGELOG" || true)
-          echo "  Found $ENTRY_COUNT entries"
+          echo "Found $ENTRY_COUNT entries"
           
           if [ "$ENTRY_COUNT" -gt "$MAX_CHANGELOG_ENTRIES" ]; then
             echo "  Trimming to $MAX_CHANGELOG_ENTRIES latest entries..."
@@ -185,12 +145,12 @@ jobs:
             ' >> /tmp/trimmed.md
             
             mv /tmp/trimmed.md "$CHANGELOG"
-            echo "✅ Kept latest $MAX_CHANGELOG_ENTRIES entries, removed $(($ENTRY_COUNT - $MAX_CHANGELOG_ENTRIES)) old entries"
+            echo "Kept latest $MAX_CHANGELOG_ENTRIES entries, removed $(($ENTRY_COUNT - $MAX_CHANGELOG_ENTRIES)) old entries"
           else
-            echo "  No trimming needed"
+            echo "No trimming needed"
           fi
           
-          echo "✅ CHANGELOG.md updated"
+          echo "CHANGELOG.md updated"
 
       # ----------------------------------------------------------------
       # 3. Commit and push
