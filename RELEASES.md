@@ -12,4 +12,4 @@
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
 | prod | v0.0.80 | harsharya959 | 2026-04-27 09:00 UTC |
-| stage | v0.0.77 | harsharya959 | 2026-04-27 11:05 UTC |
+| stage | v0.0.78 | harsharya959 | 2026-04-27 11:08 UTC |
