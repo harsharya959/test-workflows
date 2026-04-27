@@ -56,21 +56,27 @@ jobs:
           echo "- Current tag: $CURRENT_TAG"
           echo ""
           
-          # Extract JSON block from RELEASES.md
-          VERSIONS=$(awk '/<!-- VERSIONS_JSON/{found=1; next} /VERSIONS_JSON -->/{found=0} found' RELEASES.md)
-          
-          if [ -z "$VERSIONS" ]; then
-            echo "No VERSIONS_JSON block found in RELEASES.md"
+          # Check if RELEASES.md exists
+          if [ ! -f "RELEASES.md" ]; then
+            echo "RELEASES.md not found. Using current tag as previous tag (first deployment)"
             PREV_TAG="$CURRENT_TAG"
           else
-            # Parse JSON to get tag for specific tenant and environment
-            PREV_TAG=$(echo "$VERSIONS" | jq -r --arg t "$TENANT" --arg e "$ENVIRONMENT" '.[$t][$e]')
+            # Extract JSON block from RELEASES.md
+            VERSIONS=$(awk '/<!-- VERSIONS_JSON/{found=1; next} /VERSIONS_JSON -->/{found=0} found' RELEASES.md)
             
-            if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "null" ] || [ "$PREV_TAG" = "-" ]; then
-              echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+            if [ -z "$VERSIONS" ]; then
+              echo "No VERSIONS_JSON block found in RELEASES.md"
               PREV_TAG="$CURRENT_TAG"
             else
-              echo "Found previous deployed tag: $PREV_TAG"
+              # Parse JSON to get tag for specific tenant and environment
+              PREV_TAG=$(echo "$VERSIONS" | jq -r --arg t "$TENANT" --arg e "$ENVIRONMENT" '.[$t][$e]')
+              
+              if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "null" ] || [ "$PREV_TAG" = "-" ]; then
+                echo "No previous deployed tag found. Using current tag as previous tag (first deployment)"
+                PREV_TAG="$CURRENT_TAG"
+              else
+                echo "Found previous deployed tag: $PREV_TAG"
+              fi
             fi
           fi
           
