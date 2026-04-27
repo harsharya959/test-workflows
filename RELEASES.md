@@ -1,15 +1,35 @@
 ## Tenant Deployments
 
-### ingka
-
-| Environment | Version | Deployed By | Deployed At |
-|-------------|---------|-------------|-------------|
-| stage | v0.0.75 | harsharya959 | 2026-04-27 09:05 UTC |
-| prod | v0.0.75 | harsharya959 | 2026-04-27 09:07 UTC |
-
 ### inter
 
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
-| prod | v0.0.80 | harsharya959 | 2026-04-27 09:00 UTC |
-| stage | v0.0.78 | harsharya959 | 2026-04-27 11:08 UTC |
+| stage | v0.0.46 | sonika-prakash-17 | 2026-04-27 10:48 UTC |
+| prod | - | - | - |
+
+
+
+### ingka
+
+| Environment | Version | Deployed By | Deployed At |
+|-------------|---------|-------------|-------------|
+| stage | v0.0.46 | sonika-prakash-17 | 2026-04-27 10:48 UTC |
+| prod | v0.0.46 | sonika-prakash-17 | 2026-04-27 10:50 UTC |
+
+
+
+
+
+
+<!-- VERSIONS_JSON
+{
+  "ingka": {
+    "stage": "v0.0.46",
+    "prod": "v0.0.46"
+  },
+  "inter": {
+    "stage": "v0.0.46",
+    "prod": "-"
+  }
+}
+VERSIONS_JSON -->
