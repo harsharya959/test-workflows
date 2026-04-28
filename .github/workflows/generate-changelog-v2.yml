@@ -1,4 +1,4 @@
-name: Generate Changelog V2
+name: Generate Changelog
 
 on:
   workflow_call:
