@@ -1,6 +1,18 @@
 # Changelog
 
 
+## [v0.0.100] (inter/stage) - 2026-04-28 08:02 UTC
+
+> **Compare:** [v0.0.99...v0.0.100](https://github.com/harsharya959/test-workflows/compare/v0.0.99...v0.0.100)
+
+### Commits
+
+- Update generate-changelog.yml [6035e92](https://github.com/harsharya959/test-workflows/commit/6035e92bec712f8e406a43414a80e5f1818d3f86)
+- chore: update release notes [env=stage] [inter=v0.0.99] [skip ci] [cc7128a](https://github.com/harsharya959/test-workflows/commit/cc7128aed3c6575e67c9330ecad06163a863b9b7)
+- docs: update CHANGELOG.md for v0.0.99 [skip ci] [1074ec4](https://github.com/harsharya959/test-workflows/commit/1074ec491676294fe36f45b618818db79a275c95)
+
+---
+
 ## [v0.0.99] (inter/stage) - 2026-04-28 05:48 UTC
 
 > **Compare:** [v0.0.94...v0.0.99](https://github.com/harsharya959/test-workflows/compare/v0.0.94...v0.0.99)
