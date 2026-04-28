@@ -34,28 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag_version: ${{ steps.calculate-version.outputs.tag_version }}
-      release_type: ${{ steps.set-release-type.outputs.release_type }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      
-      - name: Set Release Type
-        id: set-release-type
-        run: |
-          ENV="${{ inputs.environment }}"
-          
-          # Set release type based on environment
-          if [[ "$ENV" == "prod" ]]; then
-            RELEASE_TYPE="release"
-            echo "Environment is prod → Release Type: release"
-          else
-            RELEASE_TYPE="prerelease"
-            echo "Environment is stage → Release Type: prerelease"
-          fi
-          
-          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
       
       - name: Calculate Version
         id: calculate-version
@@ -80,11 +63,18 @@ jobs:
       
       - name: Display Release Info
         run: |
+          ENV="${{ inputs.environment }}"
+          if [[ "$ENV" == "prod" ]]; then
+            RELEASE_TYPE="release"
+          else
+            RELEASE_TYPE="prerelease"
+          fi
+          
           echo "Release Information"
           echo "- Tenant: ${{ inputs.tenant }}"
           echo "- Environment: ${{ inputs.environment }}"
           echo "- Tag Version: ${{ steps.calculate-version.outputs.tag_version }}"
-          echo "- Release Type: ${{ steps.set-release-type.outputs.release_type }}"
+          echo "- Release Type: $RELEASE_TYPE"
 
   # docker:
   #   name: "Building Docker Image: ${{ inputs.environment }}"
