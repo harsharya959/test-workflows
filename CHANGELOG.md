@@ -1,6 +1,22 @@
 # Changelog
 
 
+## [v0.0.99] (inter/stage) - 2026-04-28 05:48 UTC
+
+> **Compare:** [v0.0.94...v0.0.99](https://github.com/harsharya959/test-workflows/compare/v0.0.94...v0.0.99)
+
+### Commits
+
+- Rename generate-changelog-v2.yml to generate-changelog.yml [6f3d8a2](https://github.com/harsharya959/test-workflows/commit/6f3d8a2b05d681cd3104e1d2402c6ec162520955)
+- Delete .github/workflows/generate-changelog.yml [e368f24](https://github.com/harsharya959/test-workflows/commit/e368f24abd8d7c7933d4ba59d4c8bd14ece9167f)
+- Update generate-changelog-v2.yml [5b491ab](https://github.com/harsharya959/test-workflows/commit/5b491ab522099e2b5e2d0198c796776a2ffe1f11)
+- Update trigger-tenant-deployment.yml [53c8a6e](https://github.com/harsharya959/test-workflows/commit/53c8a6e65c302e7c63558b97027f3e074878746f)
+- Update trigger-tenant-deployment.yml [2920576](https://github.com/harsharya959/test-workflows/commit/292057672fd00d1afbe952f9fe10413b5301b4e6)
+- chore: update release notes [env=stage] [inter=v0.0.94] [skip ci] [c070cde](https://github.com/harsharya959/test-workflows/commit/c070cdeb964c1c68d344f5b54ff56af351030350)
+- docs: update CHANGELOG.md for v0.0.94 [skip ci] [636aab8](https://github.com/harsharya959/test-workflows/commit/636aab8caf47a1811940f7e9c29f08e131027a4c)
+
+---
+
 ## [v0.0.94] (inter/stage) - 2026-04-27 11:46 UTC
 
 > **Compare:** [v0.0.94...v0.0.94](https://github.com/harsharya959/test-workflows/compare/v0.0.94...v0.0.94)
