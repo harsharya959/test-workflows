@@ -4,13 +4,13 @@
 
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
-| stage | v0.0.99 | harsharya959 | 2026-04-28 05:48 UTC |
+| stage | v0.0.100 | harsharya959 | 2026-04-28 08:02 UTC |
 | prod | - | - | - |
 
 <!-- VERSIONS_JSON
 {
   "inter": {
-    "stage": "v0.0.99",
+    "stage": "v0.0.100",
     "prod": "-"
   }
 }
