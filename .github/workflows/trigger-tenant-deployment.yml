@@ -102,7 +102,7 @@ jobs:
     name: "Generate Changelog Entry"
     # needs: [validate-tag, deploy]
     needs: [validate-tag]
-    uses: ./.github/workflows/generate-changelog-v2.yml
+    uses: ./.github/workflows/generate-changelog.yml
     with:
       tag_version: ${{ needs.validate-tag.outputs.tag_version }}
       tenant: ${{ inputs.tenant }}
