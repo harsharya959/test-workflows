@@ -91,6 +91,7 @@ jobs:
           OUT="/tmp/new_entry.md"
           REPO="${{ github.repository }}"
           REPO_URL="https://github.com/${REPO}"
+          DEPLOYED_BY="${{ github.actor }}"
           
           # Check if tag starts with hotfix-
           if [[ "$CURRENT_TAG" =~ ^hotfix- ]]; then
@@ -111,6 +112,7 @@ jobs:
               -e "s|{{PREV_TAG}}|$PREV_TAG|g" \
               -e "s|{{CURRENT_TAG}}|$CURRENT_TAG|g" \
               -e "s|{{REPO_URL}}|$REPO_URL|g" \
+              -e "s|{{DEPLOYED_BY}}|$DEPLOYED_BY|g" \
               "$TEMPLATE" > "$OUT"
           
           # Replace {{COMMITS}} placeholder with actual commits
