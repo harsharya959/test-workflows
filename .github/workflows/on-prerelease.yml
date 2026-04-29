@@ -1,0 +1,79 @@
+name: on pre-release
+
+on:
+  release:
+    types: [prereleased]
+
+concurrency:
+  group: on-pre-release
+
+permissions:
+  contents: write
+  deployments: write
+  id-token: write
+  repository-projects: write
+
+env:
+  TENANTS: '["ingka", "inter"]'
+
+jobs:
+  initialize-matrix:
+    name: Initialise Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      tenants: ${{ steps.initialize-tenants.outputs.tenants }}
+    steps:
+      - name: Set tenants output
+        id: initialize-tenants
+        run: echo 'tenants=${{ env.TENANTS }}' >> "$GITHUB_OUTPUT"
+
+  # docker:
+  #   name: "Building Docker Image: Stage (${{ matrix.tenant }})"
+  #   needs: initialize-matrix
+  #   uses: ./.github/workflows/docker.yaml
+  #   secrets:
+  #     ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  #   if: ${{ github.event.release.tag_name != '' }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       tenant: ${{ fromJSON(needs.initialize-matrix.outputs.tenants) }}
+  #   concurrency:
+  #     group: on-pre-release-${{ matrix.tenant }}
+  #   with:
+  #     tenant: ${{ matrix.tenant }}
+  #     environment: stage
+  #     version: ${{ github.event.release.tag_name }}
+
+  # deploy-to-stage:
+  #   name: "Deployment: Stage (${{ matrix.tenant }})"
+  #   uses: ./.github/workflows/deployment.yaml
+  #   secrets: {}
+  #   needs: [initialize-matrix, docker]
+  #   if: ${{ github.event.release.tag_name != '' }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       tenant: ${{ fromJSON(needs.initialize-matrix.outputs.tenants) }}
+  #   concurrency:
+  #     group: on-pre-release-${{ matrix.tenant }}
+  #   with:
+  #     tenant: ${{ matrix.tenant }}
+  #     environment: stage
+  #     version: ${{ github.event.release.tag_name }}
+
+  update-releases-table:
+    name: Update Releases Table
+    needs: [initialize-matrix]
+    if: ${{ github.event.release.tag_name != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Update release notes
+        run: make deploy DEPLOYED_BY=${{ github.actor }} ENV=stage TAG=${{ github.event.release.tag_name }}
