@@ -1,9 +1,9 @@
 # ─── release notes ──────────────────────────────────
 RELEASES_FILE := RELEASES.md
 DATE          := $(shell date -u +"%Y-%m-%d %H:%M UTC")
-DEPLOYED_BY   ?= $(error DEPLOYED_BY is required)
-ENV           ?= $(error ENV is required)
-TAG           ?= $(error TAG is required)
+DEPLOYED_BY   ?=
+ENV           ?=
+TAG           ?=
 TENANT        ?=
 
 # New tenants can be added here with space separation
@@ -17,12 +17,42 @@ ifneq ($(strip $(TENANT)),)
 	endif
 endif
 
+# Shared awk script to reconstruct file: removes old JSON block, then appends fresh one.
+# Usage: awk -v json_tmp="..." '$(AWK_RECONSTRUCT_FILE_WITH_JSON)' input.txt > output.txt
+AWK_RECONSTRUCT_FILE_WITH_JSON := /<!-- VERSIONS_JSON/ { in_json=1; next } \
+	in_json && /VERSIONS_JSON -->/ { in_json=0; next } \
+	in_json { next } \
+	{ lines[++n]=$$0 } \
+	END { \
+		while (n > 0 && lines[n] ~ /^[[:space:]]*$$/) n--; \
+		for (i = 1; i <= n; i++) print lines[i]; \
+		print ""; \
+		print "<!-- VERSIONS_JSON"; \
+		while ((getline line < json_tmp) > 0) print line; \
+		close(json_tmp); \
+		print "VERSIONS_JSON -->" \
+	}
+
 .PHONY: deploy update-releases ensure-tenant-table update-row ensure-json-version update-json-version
 
-deploy: update-releases
+deploy: validate-release-vars update-releases
 	@git add $(RELEASES_FILE)
 	@git commit -m "chore: update release notes [env=$(ENV)] $(COMMIT_TENANT_SUMMARY) [skip ci]"
 	@git push
+
+validate-release-vars:
+	@if [ -z "$(DEPLOYED_BY)" ]; then \
+		echo "Error: DEPLOYED_BY is required for deploy"; \
+		exit 1; \
+	fi
+	@if [ -z "$(ENV)" ]; then \
+		echo "Error: ENV is required for deploy"; \
+		exit 1; \
+	fi
+	@if [ -z "$(TAG)" ]; then \
+		echo "Error: TAG is required for deploy"; \
+		exit 1; \
+	fi
 
 update-releases:
 	@if ! grep -q "^## Tenant Deployments$$" $(RELEASES_FILE) 2>/dev/null; then \
@@ -57,11 +87,11 @@ ensure-json-version:
 	else \
 		json_tmp="$(RELEASES_FILE).json.tmp"; \
 		awk '/<!-- VERSIONS_JSON/{flag=1; next} /VERSIONS_JSON -->/{flag=0; next} flag' $(RELEASES_FILE) | jq --arg tenant "$(TENANT)" '. + if has($$tenant) then {} else {($$tenant): {"stage": "-", "prod": "-"}} end' > "$$json_tmp" && \
-		awk -v json_tmp="$$json_tmp" '/<!-- VERSIONS_JSON/{in_json=1; next} in_json && /VERSIONS_JSON -->/{in_json=0; next} in_json{next} {lines[++n]=$$0} END{while (n > 0 && lines[n] ~ /^[[:space:]]*$$/) n--; for (i = 1; i <= n; i++) print lines[i]; print ""; print "<!-- VERSIONS_JSON"; while ((getline line < json_tmp) > 0) print line; close(json_tmp); print "VERSIONS_JSON -->"}' $(RELEASES_FILE) > $(RELEASES_FILE).tmp && mv $(RELEASES_FILE).tmp $(RELEASES_FILE) && rm -f "$$json_tmp"; \
+		awk -v json_tmp="$$json_tmp" '$(AWK_RECONSTRUCT_FILE_WITH_JSON)' $(RELEASES_FILE) > $(RELEASES_FILE).tmp && mv $(RELEASES_FILE).tmp $(RELEASES_FILE) && rm -f "$$json_tmp"; \
 	fi
 
 # Update the VERSIONS_JSON block with the deployed version.
 update-json-version:
 	@json_tmp="$(RELEASES_FILE).json.tmp"; \
 	awk '/<!-- VERSIONS_JSON/{flag=1; next} /VERSIONS_JSON -->/{flag=0; next} flag' $(RELEASES_FILE) | jq --arg tenant "$(TENANT)" --arg env "$(ENV)" --arg tag "$(TAG)" '.[$$tenant][$$env] = $$tag' > "$$json_tmp" && \
-	awk -v json_tmp="$$json_tmp" '/<!-- VERSIONS_JSON/{in_json=1; next} in_json && /VERSIONS_JSON -->/{in_json=0; next} in_json{next} {lines[++n]=$$0} END{while (n > 0 && lines[n] ~ /^[[:space:]]*$$/) n--; for (i = 1; i <= n; i++) print lines[i]; print ""; print "<!-- VERSIONS_JSON"; while ((getline line < json_tmp) > 0) print line; close(json_tmp); print "VERSIONS_JSON -->"}' $(RELEASES_FILE) > $(RELEASES_FILE).tmp && mv $(RELEASES_FILE).tmp $(RELEASES_FILE) && rm -f "$$json_tmp"
+	awk -v json_tmp="$$json_tmp" '$(AWK_RECONSTRUCT_FILE_WITH_JSON)' $(RELEASES_FILE) > $(RELEASES_FILE).tmp && mv $(RELEASES_FILE).tmp $(RELEASES_FILE) && rm -f "$$json_tmp"
