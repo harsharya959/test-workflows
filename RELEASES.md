@@ -4,7 +4,7 @@
 
 | Environment | Version | Deployed By | Deployed At |
 |-------------|---------|-------------|-------------|
-| stage | v0.0.98 | harsharya959 | 2026-04-29 10:10 UTC |
+| stage | v0.0.108 | harsharya959 | 2026-04-30 09:01 UTC |
 | prod | v0.0.101 | harsharya959 | 2026-04-29 04:54 UTC |
 
 
@@ -18,7 +18,7 @@
 <!-- VERSIONS_JSON
 {
   "inter": {
-    "stage": "v0.0.98",
+    "stage": "v0.0.108",
     "prod": "v0.0.101"
   },
   "ingka": {
