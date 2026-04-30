@@ -22,6 +22,9 @@ on:
           - stage
           - prod
 
+concurrency:
+  group: on-trigger-tenant-deployment
+
 permissions:
   contents: write
   deployments: write
