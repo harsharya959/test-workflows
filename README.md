@@ -1,3 +1,30 @@
+# nexus-ds-event-consumer
+Solace Consumer
+
+
+### Export go private
+export GOPRIVATE=github.com/ingka-group-digital/*
+
+### To run the docker image locally: 
+docker run -it --rm -e ENVIRONMENT=dev nexus-ds-event-consumer bin/ash
+
+### To login and ispect the docker image:
+docker run -it --rm -e ENVIRONMENT=dev --entrypoint /bin/ash nexus-ds-event-consumer
+
+### To build the proto golang code:
+protoc --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. proto/dsm_promise_bt.proto
+
+
+## Load test with K6
+ - ### Install KS:
+   ```shell
+    brew install k6
+    ```
+ - ### Install KS:
+   ```shell
+   k6 run load_test/load_test.js
+    ```
+
 ## Release Notes & Deployment Tracking
 
 We use two files to track deployments:
