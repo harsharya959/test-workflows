@@ -24,6 +24,7 @@ on:
 
 concurrency:
   group: on-trigger-tenant-deployment
+  cancel-in-progress: false
 
 permissions:
   contents: write
