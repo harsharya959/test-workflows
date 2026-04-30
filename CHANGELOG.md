@@ -1,4 +1,4 @@
-# Changelog
+# Release Notes - Manual Tenant Deployments
 
 
 ## [v0.0.111] (ingka/stage) - 2026-04-30 09:06 UTC
